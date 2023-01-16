@@ -3,7 +3,6 @@
   
     <include file="$(find setting_tf2)/launch/tf2_setting.launch">
     </include>
-
     <!-- Dynamixel Workbench Controller -->
     <include file="$(find dynamixel_workbench_controllers)/launch/position_control.launch">
         <arg name="device_name"        		default="/dev/ttyU2D2"/>
@@ -110,9 +109,8 @@
 		<param name="tilt_position_I_gain"	value="0.3"/>	
 		<param name="tilt_position_D_gain"	value="0.5"/>		
 
-
     <node name="FAC_MAV_node"  pkg="FAC_MAV" type="FAC_MAV_ctrler"  output="screen"/>
 
     <!-- Rosbag -->
-    <node pkg="rosbag" type="record" name="record" output="screen" args="-o /home/mrl_latte2/catkin_ws/src/FAC_MAV/bag/ -a" /><!-- /angle /desired_angle /Forces /t265_pos /desired_altitude"/> -->
+    <node pkg="rosbag" type="record" name="record" output="screen" args="-o /home/mrl_latte2/catkin_ws/src/FAC_MAV/bag/ -a" /><!-- /angle /desired_angle /Forces /t265_pos /desired_altitude"/> -->    
 </launch>

@@ -53,7 +53,7 @@ int16_t PWM_d;
 int16_t loop_time;
 std_msgs::Int16MultiArray PWMs_cmd;
 std_msgs::Int32MultiArray PWMs_val;
-std_msgs::Float32MultiArray Force_main;
+std_msgs::Float32MultiArray Force_comb;
 
 sensor_msgs::JointState rac_servo_value;
 sensor_msgs::Imu imu;
@@ -85,14 +85,16 @@ std_msgs::Float32 battery_voltage_msg;
 std_msgs::Float32 battery_real_voltage;
 std_msgs::Float32 dt;
 
-//slave드론으로 보낼 메세지
+//
 std_msgs::Float32MultiArray Force_cmd; 
-std_msgs::Float32MultiArray Servo_cmd;
+std_msgs::Float32MultiArray Servo_sub_cmd;
+std_msgs::Float32MultiArray Servo_main_cmd;
 std_msgs::Bool kill_sub;
+std_msgs::Bool tilt_sub;
 //for time checker
 //
 bool servo_sw=false;
-double theta1_command, theta2_command;
+double theta11_command, theta12_command;
 bool start_flag=false;
 bool tilting_flag=false;
 
@@ -176,7 +178,7 @@ int yaw_rotate_count = 0;
 
 static double r_arm = 0.109;// m // diagonal length between thruster : 218mm;
 static double l_servo = 0.015;
-static double mass = 6.0; //combined drone mass //2022.10.27
+static double mass = 4.8; //combined drone mass //2022.10.27
 static double m1 =3.3; //master drone mass 22.10.27
 static double m2 =2.7; //slave drone mass  22.10.27
 static double frame_l = 0.32; //(cm) frame length 22.10.27
@@ -197,13 +199,13 @@ static double g = 9.80665;//(m/s^2)
 static double rp_limit = 0.3;//(rad)
 static double y_vel_limit = 0.01;//(rad/s)
 static double y_d_tangent_deadzone = (double)0.05 * y_vel_limit;//(rad/s)
-static double T_limit = 67;//(N) 
+static double T_limit = 58;//(N) 
 static double altitude_limit = 1;//(m)
 static double XY_limit = 0.5;
 static double XYZ_dot_limit=1;
 static double XYZ_ddot_limit=2;
 static double alpha_beta_limit=1;
-static double hardware_servo_limit=0.3;
+static double hardware_servo_limit=0.2; //0.3
 static double servo_command_limit = 0.2;
 static double tau_y_limit = 0.3;
 
@@ -215,6 +217,7 @@ double z_c_hat=0.0;
 //Combined Drone parameter 
 
 float theta21_command, theta22_command;
+float theta21=0, theta22=0;
 float F11 = 0;//desired propeller 1 force
 float F12 = 0;//desired propeller 2 force
 float F13 = 0;//desired propeller 3 force
@@ -275,7 +278,8 @@ double conv_Pp, conv_Ip, conv_Dp;
 
 
 //Tilt Flight Mode Control Gains
-double tilt_Pa, tilt_Ia, tilt_Da;
+double tilt_Par, tilt_Iar, tilt_Dar;
+double tilt_Pap, tilt_Iap, tilt_Dap;
 double tilt_Py, tilt_Dy;
 double tilt_Pz, tilt_Iz, tilt_Dz;
 double tilt_Pv, tilt_Iv, tilt_Dv;
@@ -283,7 +287,7 @@ double tilt_Pp, tilt_Ip, tilt_Dp;
 //--------------------------------------------------------
 
 //Servo angle=============================================
-double theta1=0,theta2=0;
+double theta11=0,theta12=0;
 //--------------------------------------------------------
 
 //Voltage=================================================
@@ -364,6 +368,7 @@ void rpyT_ctrl();
 void ud_to_PWMs(double tau_r_des, double tau_p_des, double tau_y_des, double Thrust_des);
 float Force_to_PWM(float F);
 void jointstateCallback(const sensor_msgs::JointState& msg);
+void jointstate_sub_Callback(const sensor_msgs::JointState& msg);
 void imu_Callback(const sensor_msgs::Imu& msg);
 sensor_msgs::JointState servo_msg_create(float rr, float rp);
 void sbusCallback(const std_msgs::Int16MultiArray::ConstPtr& array);
@@ -416,7 +421,9 @@ ros::Publisher linear_acceleration;
 // Combine drone set
 ros::Publisher master2slave_force_pub;
 ros::Publisher master2slave_servo_pub;
+ros::Publisher master_servo_cmd_pub;
 ros::Publisher kill_switch_sub;
+ros::Publisher tilt_switch_sub;
 Eigen::MatrixXd CM_comb(4,8);
 Eigen::VectorXd F_cmd_comb(8);
 Eigen::MatrixXd invCM_comb(4,8);
@@ -579,9 +586,14 @@ int main(int argc, char **argv){
 
 		//Tilt Flight Mode Control Gains
 			//Roll, Pitch PID gains
-			tilt_Pa=nh.param<double>("tilt_attitude_rp_P_gain",3.5);
-			tilt_Ia=nh.param<double>("tilt_attitude_rp_I_gain",0.4);
-			tilt_Da=nh.param<double>("tilt_attitude_rp_D_gain",0.5);
+			tilt_Par=nh.param<double>("tilt_attitude_r_P_gain",3.5);
+			tilt_Iar=nh.param<double>("tilt_attitude_r_I_gain",0.4);
+			tilt_Dar=nh.param<double>("tilt_attitude_r_D_gain",0.5);
+
+			tilt_Pap=nh.param<double>("tilt_attitude_p_P_gain",3.5);
+                        tilt_Iap=nh.param<double>("tilt_attitude_p_I_gain",0.4);
+                        tilt_Dap=nh.param<double>("tilt_attitude_p_D_gain",0.5);
+
 
 			//Yaw PID gains
 			tilt_Py=nh.param<double>("tilt_attitude_y_P_gain",5.0);
@@ -617,6 +629,7 @@ int main(int argc, char **argv){
 		//setCM();
 		setCM_comb();
                 F_cmd << 0, 0, 0, 0;
+		F_cmd_comb << 0,0,0,0,0,0,0,0;
 	//----------------------------------------------------------
     PWMs = nh.advertise<std_msgs::Int16MultiArray>("PWMs", 1); // PWM 1,2,3,4
     PWM_generator = nh.advertise<std_msgs::Int32MultiArray>("/command",1);  // publish to pca9685
@@ -626,7 +639,7 @@ int main(int argc, char **argv){
 
 	euler = nh.advertise<geometry_msgs::Vector3>("angle",1); // roll, pitch, yaw
 	desired_angle = nh.advertise<geometry_msgs::Vector3>("desired_angle",10);
-	Forces = nh.advertise<std_msgs::Float32MultiArray>("Force_main",10); // F 1,2,3,4
+	Forces = nh.advertise<std_msgs::Float32MultiArray>("Force_comb",10); // F 1,2,3,4
 	desired_torque = nh.advertise<geometry_msgs::Vector3>("torque_d",10);
 	linear_velocity = nh.advertise<geometry_msgs::Vector3>("lin_vel",10);
 	angular_velocity = nh.advertise<geometry_msgs::Vector3>("gyro",10);
@@ -637,21 +650,22 @@ int main(int argc, char **argv){
 	force_command = nh.advertise<std_msgs::Float32MultiArray>("force_cmd",10);
 	delta_time = nh.advertise<std_msgs::Float32>("delta_t",10);
 	desired_velocity = nh.advertise<geometry_msgs::Vector3>("lin_vel_d",10);
-	//Center_of_Mass = nh.advertise<geometry_msgs::Vector3>("Center_of_Mass",10);
 	angular_Acceleration = nh.advertise<geometry_msgs::Vector3>("ang_accel",10);
-	//sine_wave_data = nh.advertise<geometry_msgs::Vector3>("sine_wave",10);
-	//disturbance = nh.advertise<geometry_msgs::Vector3>("dhat",10);
 	linear_acceleration = nh.advertise<geometry_msgs::Vector3>("lin_acl",10);
-
-	//퍼블리셔 초기화
+	
+	master_servo_cmd_pub = nh.advertise<std_msgs::Float32MultiArray>("master_servo_cmd_pub",10);
+	//
 	master2slave_force_pub =nh.advertise<std_msgs::Float32MultiArray>("master2slave_force_pub",100);
 	master2slave_servo_pub =nh.advertise<std_msgs::Float32MultiArray>("master2slave_servo_pub",100);
-	kill_switch_sub = nh.advertise<std_msgs::Bool>("kill_switch_sub",100);
+	
+	kill_switch_sub = nh.advertise<std_msgs::Bool>("kill_switch_sub",1);
+	tilt_switch_sub = nh.advertise<std_msgs::Bool>("tilt_switch_sub",1);
 
 
 	//
 
     ros::Subscriber dynamixel_state = nh.subscribe("joint_states",10,jointstateCallback,ros::TransportHints().tcpNoDelay());
+    ros::Subscriber Servo_angle_sub = nh. subscribe("servo_angle_sub",10,jointstate_sub_Callback,ros::TransportHints().tcpNoDelay()); 
     ros::Subscriber att = nh.subscribe("/imu/data",1,imu_Callback,ros::TransportHints().tcpNoDelay());
     ros::Subscriber rc_in = nh.subscribe("/sbus",10,sbusCallback,ros::TransportHints().tcpNoDelay());
 	ros::Subscriber battery_checker = nh.subscribe("/battery",10,batteryCallback,ros::TransportHints().tcpNoDelay());
@@ -704,8 +718,12 @@ void publisherSet(){
 		e_Y_i=0;
 		e_Y_dot_i=0;
 		start_flag=false;
-		theta1_command=0.0;
-		theta2_command=0.0;
+		theta11_command=0.0;
+		theta12_command=0.0;
+		//-----------2023.01.05----------------//
+		theta21_command=0.0;
+		theta22_command=0.0;
+		//------------------------------------//
 		pwm_Kill();
 		//ROS_INFO("Kill mode");	
 		Force_cmd.data={0,0,0,0};
@@ -727,35 +745,64 @@ void publisherSet(){
 	desired_pos.x = X_d;
 	desired_pos.y = Y_d;
 	desired_pos.z = Z_d;
-	Force_main.data.resize(4);
-	Force_main.data[0] = F11;
-	Force_main.data[1] = F12;
-	Force_main.data[2] = F13;
-	Force_main.data[3] = F14;
+
+	Force_comb.data.resize(8);
+	Force_comb.data[0] = F11;
+	Force_comb.data[1] = F12;
+	Force_comb.data[2] = F13;
+	Force_comb.data[3] = F14;
+	Force_comb.data[4] = F21;
+	Force_comb.data[5] = F22;
+        Force_comb.data[6] = F23;
+        Force_comb.data[7] = F24;
+
+	Force_cmd.data.resize(4);
+
+        Force_cmd.data[0] = F21;
+        Force_cmd.data[1] = F22;
+        Force_cmd.data[2] = F23;
+        Force_cmd.data[3] = F24;
+
+        Servo_sub_cmd.data.resize(2);
+        Servo_sub_cmd.data[0] = theta21_command;
+        Servo_sub_cmd.data[1] = theta22_command;
+	
+//	ROS_INFO("th_21_cmd :%lf, th_22_cmd :%lf \n",theta21_command,theta22_command);
+//	ROS_INFO("th_11_cmd :%lf, th_12_cmd :%lf \n",theta11_command,theta12_command);
+
+	Servo_main_cmd.data.resize(2);
+	Servo_main_cmd.data[0]= theta11_command;
+	Servo_main_cmd.data[1]= theta12_command;
+	master_servo_cmd_pub.publish(Servo_main_cmd);
+	
+
+
 	CoM.x = x_c_hat;
 	CoM.y = y_c_hat;
 	CoM.z = z_c_hat;
 	PWMs.publish(PWMs_cmd);// PWMs_d value
-	//22.10.27 master to slave data
-	master2slave_force_pub.publish(Force_cmd);
+        //22.10.27 master to slave data
+        master2slave_force_pub.publish(Force_cmd);
+        master2slave_servo_pub.publish(Servo_sub_cmd);
 	//22.11.01
-	kill_switch_sub.publish(kill_sub);
-	//
-	euler.publish(imu_rpy);//rpy_act value
-	desired_angle.publish(angle_d);//rpy_d value
-	Forces.publish(Force_main);// force conclusion
-	goal_dynamixel_position_.publish(servo_msg_create(theta1_command,-theta2_command)); // desired theta
-	desired_torque.publish(torque_d); // torque desired
-	linear_velocity.publish(lin_vel); // actual linear velocity 
-	PWM_generator.publish(PWMs_val);
-	desired_position.publish(desired_pos);//desired position 
-	position.publish(pos); // actual position
-	desired_force.publish(force_d); // desired force it need only tilt mode 
-	battery_voltage.publish(battery_voltage_msg);
-	delta_time.publish(dt);
-	desired_velocity.publish(desired_lin_vel);
-	angular_Acceleration.publish(angular_Accel);
-	linear_acceleration.publish(lin_acl);
+        kill_switch_sub.publish(kill_sub);
+	tilt_switch_sub.publish(tilt_sub);
+        //
+        euler.publish(imu_rpy);//rpy_act value
+        desired_angle.publish(angle_d);//rpy_d value
+        Forces.publish(Force_comb);// force conclusion
+        goal_dynamixel_position_.publish(servo_msg_create(theta11_command,-theta12_command)); // desired theta
+        desired_torque.publish(torque_d); // torque desired
+        linear_velocity.publish(lin_vel); // actual linear velocity
+        PWM_generator.publish(PWMs_val);
+        desired_position.publish(desired_pos);//desired position
+        position.publish(pos); // actual position
+        desired_force.publish(force_d); // desired force it need only tilt mode
+        battery_voltage.publish(battery_voltage_msg);
+        delta_time.publish(dt);
+        desired_velocity.publish(desired_lin_vel);
+        angular_Acceleration.publish(angular_Accel);
+        linear_acceleration.publish(lin_acl);
 	prev_angular_Vel = imu_ang_vel;
 	prev_lin_vel = lin_vel;
 	
@@ -764,20 +811,21 @@ void publisherSet(){
 
 void setCM(){
 	//Co-rotating type
+	/*
 	CM <<          (l_servo+z_c_hat)*sin(theta1)+y_c_hat*cos(theta1),  (r_arm+y_c_hat)*cos(theta2)+b_over_k_ratio*sin(theta2),       (l_servo+z_c_hat)*sin(theta1)+y_c_hat*cos(theta1), -(r_arm-y_c_hat)*cos(theta2)+b_over_k_ratio*sin(theta2),
               (r_arm-x_c_hat)*cos(theta1)+b_over_k_ratio*sin(theta1),      (-l_servo+z_c_hat)*sin(theta2)-x_c_hat*cos(theta2), -(r_arm+x_c_hat)*cos(theta1)+b_over_k_ratio*sin(theta1),      (-l_servo+z_c_hat)*sin(theta2)-x_c_hat*cos(theta2),
               (r_arm-x_c_hat)*sin(theta1)-b_over_k_ratio*cos(theta1), -(r_arm+y_c_hat)*sin(theta2)+b_over_k_ratio*cos(theta2), -(r_arm+x_c_hat)*sin(theta1)-b_over_k_ratio*cos(theta1),  (r_arm-y_c_hat)*sin(theta2)+b_over_k_ratio*cos(theta2),
                                                         -cos(theta1),                                            -cos(theta2),                                            -cos(theta1),                                            -cos(theta2);
-    	invCM = CM.inverse();
+    	invCM = CM.inverse();*/
 }
 // set Combined control matrix 22.10.27
 // [ M1 | M2 ]
 void setCM_comb(){
 
-	CM_comb <<        (l_servo+z_c_hat)*sin(theta1)+y_c_hat*cos(theta1),  (r_arm+y_c_hat)*cos(theta2)+b_over_k_ratio*sin(theta2),       (l_servo+z_c_hat)*sin(theta1)+y_c_hat*cos(theta1), -(r_arm-y_c_hat)*cos(theta2)+b_over_k_ratio*sin(theta2),   (l_servo+z_c_hat)*sin(theta1)+(-diag+y_c_hat)*cos(theta1),    (r_arm-diag+y_c_hat)*cos(theta2)+b_over_k_ratio*sin(theta2),    (l_servo+z_c_hat)*sin(theta1)+(-diag+y_c_hat)*cos(theta1), -(r_arm+diag-y_c_hat)*cos(theta2)+b_over_k_ratio*sin(theta2),
-              (r_arm-x_c_hat)*cos(theta1)+b_over_k_ratio*sin(theta1),      (-l_servo+z_c_hat)*sin(theta2)-x_c_hat*cos(theta2), -(r_arm+x_c_hat)*cos(theta1)+b_over_k_ratio*sin(theta1),      (-l_servo+z_c_hat)*sin(theta2)-x_c_hat*cos(theta2), (r_arm-diag-x_c_hat)*cos(theta1)+b_over_k_ratio*sin(theta1),      (-l_servo+z_c_hat)*sin(theta2)-(diag+x_c_hat)*cos(theta2), -(r_arm+diag+x_c_hat)*cos(theta1)+b_over_k_ratio*sin(theta1),    (-l_servo+z_c_hat)*sin(theta2)-(diag+x_c_hat)*cos(theta2),
-              (r_arm-x_c_hat)*sin(theta1)-b_over_k_ratio*cos(theta1), -(r_arm+y_c_hat)*sin(theta2)+b_over_k_ratio*cos(theta2), -(r_arm+x_c_hat)*sin(theta1)-b_over_k_ratio*cos(theta1),  (r_arm-y_c_hat)*sin(theta2)+b_over_k_ratio*cos(theta2), (r_arm-diag-x_c_hat)*sin(theta1)-b_over_k_ratio*cos(theta1),   -(r_arm-diag+y_c_hat)*sin(theta2)+b_over_k_ratio*cos(theta2), -(r_arm+diag+x_c_hat)*sin(theta1)-b_over_k_ratio*cos(theta1),  (r_arm+diag-y_c_hat)*sin(theta2)+b_over_k_ratio*cos(theta2),
-                                                        -cos(theta1),                                            -cos(theta2),                                            -cos(theta1),                                            -cos(theta2),                                                -cos(theta1),                                                   -cos(theta2),                                                 -cos(theta1),                                                 -cos(theta2);
+	CM_comb <<        (l_servo+z_c_hat)*sin(theta11)+y_c_hat*cos(theta11),  (r_arm+y_c_hat)*cos(theta12)+b_over_k_ratio*sin(theta12),       (l_servo+z_c_hat)*sin(theta11)+y_c_hat*cos(theta11), -(r_arm-y_c_hat)*cos(theta12)+b_over_k_ratio*sin(theta12),   (l_servo+z_c_hat)*sin(theta21)+(-diag+y_c_hat)*cos(theta21),    (r_arm-diag+y_c_hat)*cos(theta22)+b_over_k_ratio*sin(theta22),    (l_servo+z_c_hat)*sin(theta21)+(-diag+y_c_hat)*cos(theta21), -(r_arm+diag-y_c_hat)*cos(theta22)+b_over_k_ratio*sin(theta22),
+              (r_arm-x_c_hat)*cos(theta11)+b_over_k_ratio*sin(theta11),      (-l_servo+z_c_hat)*sin(theta12)-x_c_hat*cos(theta12), -(r_arm+x_c_hat)*cos(theta11)+b_over_k_ratio*sin(theta11),      (-l_servo+z_c_hat)*sin(theta12)-x_c_hat*cos(theta12), (r_arm-diag-x_c_hat)*cos(theta21)+b_over_k_ratio*sin(theta21),      (-l_servo+z_c_hat)*sin(theta22)-(diag+x_c_hat)*cos(theta22), -(r_arm+diag+x_c_hat)*cos(theta21)+b_over_k_ratio*sin(theta21),    (-l_servo+z_c_hat)*sin(theta22)-(diag+x_c_hat)*cos(theta22),
+              (r_arm-x_c_hat)*sin(theta11)-b_over_k_ratio*cos(theta11), -(r_arm+y_c_hat)*sin(theta12)+b_over_k_ratio*cos(theta12), -(r_arm+x_c_hat)*sin(theta11)-b_over_k_ratio*cos(theta11),  (r_arm-y_c_hat)*sin(theta12)+b_over_k_ratio*cos(theta12), (r_arm-diag-x_c_hat)*sin(theta21)-b_over_k_ratio*cos(theta21),   -(r_arm-diag+y_c_hat)*sin(theta22)+b_over_k_ratio*cos(theta22), -(r_arm+diag+x_c_hat)*sin(theta21)-b_over_k_ratio*cos(theta21),  (r_arm+diag-y_c_hat)*sin(theta22)+b_over_k_ratio*cos(theta22),
+                                                        -cos(theta11),                                            -cos(theta12),                                            -cos(theta11),                                            -cos(theta12),                                                -cos(theta21),                                                   -cos(theta22),                                                 -cos(theta21),                                                 -cos(theta22);
 
 
   	Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> COD(CM_comb);	
@@ -829,9 +877,9 @@ void rpyT_ctrl() {
 			Y_dot_d = Pp * e_Y + Ip * e_Y_i - Dp * lin_vel.y;
 		}
 		/*if(velocity_mode){
-			X_dot_d = -XYZ_dot_limit*(((double)Sbus[1]-(double)1500)/(double)500);
-			Y_dot_d = XYZ_dot_limit*(((double)Sbus[3]-(double)1500)/(double)500);
-		}*/	
+		  X_dot_d = -XYZ_dot_limit*(((double)Sbus[1]-(double)1500)/(double)500);
+		  Y_dot_d = XYZ_dot_limit*(((double)Sbus[3]-(double)1500)/(double)500);
+		  }*/	
 		if(fabs(X_dot_d) > XYZ_dot_limit) X_dot_d = (X_dot_d/fabs(X_dot_d))*XYZ_dot_limit;
 		if(fabs(Y_dot_d) > XYZ_dot_limit) Y_dot_d = (Y_dot_d/fabs(Y_dot_d))*XYZ_dot_limit;
 		//*/
@@ -956,27 +1004,27 @@ void ud_to_PWMs(double tau_r_des, double tau_p_des, double tau_y_des, double Thr
 //	F_cmd = invCM*u;
 	F_cmd_comb = invCM_comb*u;
 	if(Sbus[7]<=1500){
-		theta1_command = 0.0;
-        theta2_command = 0.0;
+		//---------------2023.01.05----------------//
+
+		theta11_command = 0.0;
+        theta12_command = 0.0;
+	theta21_command = 0.0;
+	theta22_command = 0.0;
+	//--------------------------------------------------//
 	}
 	//Tilting type
 	else {
 		//22.10.27 should be changed
-		theta1_command = asin(F_yd/(F_cmd(0)+F_cmd(2)));
-		theta2_command = asin(-F_xd/(F_cmd(1)+F_cmd(3)));
- 		if(fabs(theta1_command)>hardware_servo_limit) theta1_command = (theta1_command/fabs(theta1_command))*hardware_servo_limit;
-		if(fabs(theta2_command)>hardware_servo_limit) theta2_command = (theta2_command/fabs(theta2_command))*hardware_servo_limit;
+		theta11_command = asin(F_yd/(F_cmd_comb(0)+F_cmd_comb(2)));
+		theta12_command = asin(-F_xd/(F_cmd_comb(1)+F_cmd_comb(3)));
+		theta21_command = asin(F_yd/(F_cmd_comb(4)+F_cmd_comb(6)));
+		theta22_command = asin(-F_xd/(F_cmd_comb(5)+F_cmd_comb(7)));
+ 		if(fabs(theta11_command)>hardware_servo_limit) theta11_command = (theta11_command/fabs(theta11_command))*hardware_servo_limit;
+		if(fabs(theta12_command)>hardware_servo_limit) theta12_command = (theta12_command/fabs(theta12_command))*hardware_servo_limit;
+		if(fabs(theta21_command)>hardware_servo_limit) theta21_command = (theta21_command/fabs(theta21_command))*hardware_servo_limit;
+                if(fabs(theta22_command)>hardware_servo_limit) theta22_command = (theta22_command/fabs(theta22_command))*hardware_servo_limit;
+
 	}
-	/* 
-	F11 = m_a*(F_cmd_comb(0)+F_cmd_comb(4));
-	F12 = m_a*(F_cmd_comb(1)+F_cmd_comb(5));
-	F13 = m_a*(F_cmd_comb(2)+F_cmd_comb(6));
-	F14 = m_a*(F_cmd_comb(3)+F_cmd_comb(7));
-	F21 = m_b*(F_cmd_comb(4)+F_cmd_comb(0));
-	F22 = m_b*(F_cmd_comb(5)+F_cmd_comb(1));
-	F23 = m_b*(F_cmd_comb(6)+F_cmd_comb(2));
-	F24 = m_b*(F_cmd_comb(7)+F_cmd_comb(3));
-	*/
 	F11 = (F_cmd_comb(0));
 	F12 = (F_cmd_comb(1));
 	F13 = (F_cmd_comb(2));
@@ -985,17 +1033,6 @@ void ud_to_PWMs(double tau_r_des, double tau_p_des, double tau_y_des, double Thr
 	F22 = (F_cmd_comb(5));
 	F23 = (F_cmd_comb(6));
 	F24 = (F_cmd_comb(7));
-	
-	//ROS_INFO("F11 : %f, F12 : %f, F13 : %f, F14 : %f",F11,F12,F13,F14);
-	//ROS_INFO("F21 : %f, F22 : %f, F23 : %f, F24 : %f",F21,F22,F23,F24);
-
-	Force_cmd.data[0] = F21;
-	Force_cmd.data[1] = F22;
-	Force_cmd.data[2] = F23;
-	Force_cmd.data[3] = F24;
-	//Servo_cmd.data = {theta1_command,theta2_command};
-	//ROS_INFO("%f %f %f %f",Force_cmd.data[0],Force_cmd.data[1],Force_cmd.data[2],Force_cmd.data[3]);
-	//ROS_INFO("%f %f",Servo_cmd.data[0],Servo_cmd.data[1]);
 
 	pwm_Command(Force_to_PWM(F11),Force_to_PWM(F12), Force_to_PWM(F13), Force_to_PWM(F14), Force_to_PWM(F11), Force_to_PWM(F12), Force_to_PWM(F13), Force_to_PWM(F14));
 	
@@ -1034,11 +1071,17 @@ float Force_to_PWM(float F) {
 
 void jointstateCallback(const sensor_msgs::JointState& msg){
     	rac_servo_value=msg;
-	theta1=msg.position[0];
-	theta2=-msg.position[1];
-    	//ROS_INFO("theta1:%lf   theta2:%lf",theta1, theta2);
+	theta11=msg.position[0];
+	theta12=-msg.position[1];
+    	//ROS_INFO("theta11:%lf   theta12:%lf",theta11, theta12);
 }
 
+void jointstate_sub_Callback(const sensor_msgs::JointState& msg){
+        rac_servo_value=msg;
+        theta21=msg.position[0];
+        theta22=msg.position[1];
+        //ROS_INFO("theta21:%lf   theta22:%lf",theta21, theta22);
+}
 ros::Time imuTimer;
 
 void imu_Callback(const sensor_msgs::Imu& msg){
@@ -1076,8 +1119,8 @@ sensor_msgs::JointState servo_msg_create(float rr, float rp){
 	servo_msg.header.stamp=ros::Time::now();
 
 	servo_msg.name.resize(2);
-	servo_msg.name[0]="id_1";
-	servo_msg.name[1]="id_2";
+	servo_msg.name[0]="id_11";
+	servo_msg.name[1]="id_12";
 
 	servo_msg.position.resize(2);
 	servo_msg.position[0]=rr;
@@ -1087,16 +1130,18 @@ sensor_msgs::JointState servo_msg_create(float rr, float rp){
 }
 
 void sbusCallback(const std_msgs::Int16MultiArray::ConstPtr& array){
-	/*for(int i=0;i<10;i++){
+	for(int i=0;i<8;i++){
 		Sbus[i]=map<int16_t>(array->data[i], 352, 1696, 1000, 2000);
-	}*/
+	}
+	/*
+	
 	int i = 0;
 	while(i<8)
 	{
 		Sbus[i]=map<int16_t>(array->data[i], 352, 1696, 1000, 2000);
 		i++;
 	}
-	
+	*/
 	if(Sbus[4]<1500) kill_mode=true;
 	else kill_mode=false;
 	kill_sub.data=kill_mode;
@@ -1122,6 +1167,8 @@ void sbusCallback(const std_msgs::Int16MultiArray::ConstPtr& array){
 
 	if(Sbus[7]>1500) tilt_mode=true;
 	else tilt_mode=false;
+	tilt_sub.data=tilt_mode;
+
 
 	//ROS_INFO("%d, %d, %d, %d, %d, %d, %d, %d",Sbus[0],Sbus[1],Sbus[2],Sbus[3],Sbus[4],Sbus[5],Sbus[6],Sbus[7]);
 	//if(Sbus[9]>1500) ESC_control=true;
@@ -1180,9 +1227,9 @@ void t265OdomCallback(const nav_msgs::Odometry::ConstPtr& msg){
 	double global_Y_dot = v(1)*(cos(imu_rpy.x)*cos(imu_rpy.z)+sin(imu_rpy.x)*sin(imu_rpy.z)*sin(imu_rpy.y))-v(2)*(cos(imu_rpy.z)*sin(imu_rpy.x)-cos(imu_rpy.x)*sin(imu_rpy.z)*sin(imu_rpy.y))+v(0)*cos(imu_rpy.y)*sin(imu_rpy.z);
 	double global_Z_dot = -v(0)*sin(imu_rpy.y)+v(2)*cos(imu_rpy.x)*cos(imu_rpy.y)+v(1)*cos(imu_rpy.y)*sin(imu_rpy.x);
 
-	lin_vel.x=v(0);//global_X_dot;
-	lin_vel.y=v(1);//global_Y_dot;
-	lin_vel.z=v(2);//global_Z_dot;
+	lin_vel.x=global_X_dot; //v(0)
+	lin_vel.y=global_Y_dot; //V(1)
+	lin_vel.z=global_Z_dot;  //v(2)
 	//ROS_INFO("Attitude - [r: %f  p: %f  y:%f]",cam_att(0),cam_att(1),cam_att(2));
 	//ROS_INFO("Rotate Linear_velocity - [x: %f  y: %f  z:%f]",v(0),v(1),v(2));
 	//ROS_INFO("Linear_velocity - [x: %f  y: %f  z:%f]",cam_v(0),cam_v(1),cam_v(2));
@@ -1353,9 +1400,13 @@ void pid_Gain_Setting(){
 		Dp = conv_Dp;
 	}
 	else{
-		Pa = tilt_Pa;
-		Ia = tilt_Ia;
-		Dar = tilt_Da;
+		Par = tilt_Par;
+		Iar = tilt_Iar;
+		Dar = tilt_Dar;
+
+		Pap = tilt_Pap;
+                Iap = tilt_Iap;
+                Dap = tilt_Dap;
 
 		Py = tilt_Py;
 		Dy = tilt_Dy;

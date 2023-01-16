@@ -49,82 +49,79 @@
 	<param name="position_integ_limit"	value="10.0"/>
 
 	<!--Center of mass-->
-	<param name="x_center_of_mass"		value="-0.076"/> <!-- -0.076 -->
-	<param name="y_center_of_mass"		value="0.076"/> <!-- 0.091 -->
-	<param name="z_center_of_mass"		value="-0.069"/>	
+	<param name="x_center_of_mass"		value="-0.127"/> <!-- -0.076 -->
+	<param name="y_center_of_mass"		value="0.120"/> <!-- 0.076 -->
+	<param name="z_center_of_mass"		value="-0.035"/>	
 
 	<!--Conventional flight mode-->
     		<!--Conventional Mode attitude_r gains-->
-    		<param name="conv_attitude_r_P_gain"	value="4.2"/>
-    		<param name="conv_attitude_r_I_gain"	value="2.0"/>
-    		<param name="conv_attitude_r_D_gain"	value="1.0"/>
+    		<param name="conv_attitude_r_P_gain"	value="6.0"/>
+    		<param name="conv_attitude_r_I_gain"	value="1.0"/>
+    		<param name="conv_attitude_r_D_gain"	value="1.5"/>
 		
-		<param name="conv_attitude_p_P_gain"   value="4.5"/>
-                <param name="conv_attitude_p_I_gain"   value="2.0"/>
-                <param name="conv_attitude_p_D_gain"   value="1.0"/>
-
-
 
 		<!--Conventional Mode attitude_p gains-->
-    		<param name="conv_attitude_p_P_gain"	value="4.0"/>
-    		<param name="conv_attitude_p_I_gain"	value="0.4"/>
-    		<param name="conv_attitude_p_D_gain"	value="0.6"/>
+    		<param name="conv_attitude_p_P_gain"	value="6.0"/>
+    		<param name="conv_attitude_p_I_gain"	value="1.0"/>
+    		<param name="conv_attitude_p_D_gain"	value="1.5"/>
 		<!--Conventional Mode attitude_y gain-->
-		<param name="conv_attitude_y_P_gain"	value="0.8"/>
+		<param name="conv_attitude_y_P_gain"	value="2.0"/> <!-- 3.0 -->
 		<!--<param name="conv_attitude_y_I_gain"	value="0"/>-->
 		<param name="conv_attitude_y_D_gain"	value="0.1"/>
 
 		<!--Conventional Mode Altitude gains-->
-		<param name="conv_altitude_P_gain"	value="2.0"/> <!-- 10 -->
-		<param name="conv_altitude_I_gain"	value="2.0"/> <!-- 5 -->
-		<param name="conv_altitude_D_gain"	value="0.1"/> <!-- 5 -->
+		<param name="conv_altitude_P_gain"	value="10.0"/> <!-- 10 -->
+		<param name="conv_altitude_I_gain"	value="5.0"/> <!-- 5 -->
+		<param name="conv_altitude_D_gain"	value="2.0"/> <!-- 5 -->
 
 		<!--Conventional Mode Velocity gains-->
-		<param name="conv_velocity_P_gain"	value="2.0"/>	
-		<param name="conv_velocity_I_gain"	value="1.0"/>	
-		<param name="conv_velocity_D_gain"	value="2.0"/>
+		<param name="conv_velocity_P_gain"	value="1.5"/> <!-- 2.0 -->	
+		<param name="conv_velocity_I_gain"	value="0.1"/> <!-- 1.0 -->	
+		<param name="conv_velocity_D_gain"	value="1.0"/> <!-- 2.0 -->
 
 		<!--Conventional Mode Horizontal Position gains-->
-		<param name="conv_position_P_gain"	value="1.0"/> <!-- 2.0 -->	
-		<param name="conv_position_I_gain"	value="0.3"/> <!-- 0.3 -->	
+		<param name="conv_position_P_gain"	value="2.0"/> <!-- 2.0 -->	
+		<param name="conv_position_I_gain"	value="0.1"/> <!-- 0.3 -->	
 		<param name="conv_position_D_gain"	value="0.6"/> <!-- 0.6 -->
 	
 	<!--Tilt flight mode-->
 		<!--Tilt Mode attitude_r gains-->
-		<param name="comb_tilt_attitude_rp_P_gain"	value="2.0"/>	
-		<param name="comb_tilt_attitude_rp_I_gain"	value="0.2"/>
-		<param name="comb_tilt_attitude_rp_D_gain"	value="0.45"/>
+		<param name="tilt_attitude_r_P_gain"	value="2.0"/>	<!-- 2.0 -->
+		<param name="tilt_attitude_r_I_gain"	value="0.2"/>   <!-- 0.2 -->
+		<param name="tilt_attitude_r_D_gain"	value="0.45"/>  <!-- 0.45 -->
 
 		<!--Tilt Mode attitude_p gains-->
-                <param name="comb_tilt_attitude_p_P_gain"      value="2.0"/>
-                <param name="comb_tilt_attitude_p_I_gain"      value="0.2"/>
-                <param name="comb_tilt_attitude_p_D_gain"      value="0.45"/>
+                <param name="tilt_attitude_p_P_gain"      value="2.0"/>
+                <param name="tilt_attitude_p_I_gain"      value="0.2"/>
+                <param name="tilt_attitude_p_D_gain"      value="0.45"/>
 
 
 		<!--Tilt Mode attitude_y gains-->
-		<param name="comb_tilt_attitude_y_P_gain"	value="2.0"/>
-		<!--<param name="comb_tilt_attitude_y_I_gain"	value="0"/>-->
-		<param name="comb_tilt_attitude_y_D_gain"	value="0.2"/>
+		<param name="tilt_attitude_y_P_gain"	value="1.0"/>
+		<!--<param name="tilt_attitude_y_I_gain"	value="0"/>-->
+		<param name="tilt_attitude_y_D_gain"	value="0.1"/>
 
 		<!--Tilt Mode Altitude gains-->
-		<param name="comb_tilt_altitude_P_gain"	value="10.0"/>
-		<param name="comb_tilt_altitude_I_gain"	value="5.0"/>
-		<param name="comb_tilt_altitude_D_gain"	value="5.0"/>
+		<param name="tilt_altitude_P_gain"	value="10.0"/>
+		<param name="tilt_altitude_I_gain"	value="5.0"/>
+		<param name="tilt_altitude_D_gain"	value="2.0"/>
 
 		<!--Tilt Mode Velocity gains-->
-		<param name="comb_tilt_velocity_P_gain"	value="2.0"/>	
-		<param name="comb_tilt_velocity_I_gain"	value="1.0"/>	
-		<param name="comb_tilt_velocity_D_gain"	value="0.2"/>
+		<param name="tilt_velocity_P_gain"	value="0.3"/> <!-- 1.0 -->	
+		<param name="tilt_velocity_I_gain"	value="0.0"/> <!-- 1.0 -->	
+		<param name="tilt_velocity_D_gain"	value="0.0"/> <!-- 0.2 -->
 
 		<!--Tilt Mode Position gains-->
-		<param name="comb_tilt_position_P_gain"	value="2.0"/>	
-		<param name="comb_tilt_position_I_gain"	value="0.3"/>	
-		<param name="comb_tilt_position_D_gain"	value="0.5"/>	
+		<param name="tilt_position_P_gain"	value="0.5"/> <!-- 2.0 -->	
+		<param name="tilt_position_I_gain"	value="0.3"/> <!-- 0.3 -->	
+		<param name="tilt_position_D_gain"	value="0.1"/> <!-- 0.5 -->	
 
 	
 
     <node name="fac_mav_main"  pkg="FAC_MAV" type="fac_mav_main"  output="screen"/>
 
+    <node pkg="logging_test" name="logging_test_node" type="logging_test"/> -->
+
     <!-- Rosbag -->
-    <node pkg="rosbag" type="record" name="record" output="screen" args="-o /home/mrl_latte2/catkin_ws/src/FAC_MAV/bag/ -a" /><!-- /angle /desired_angle /Forces /t265_pos /desired_altitude"/> -->
+    <node pkg="rosbag" type="record" name="record" output="screen" args="-o /home/mrl_latte2/catkin_ws/src/FAC_MAV/bag/ /simple_logging_data /" /><!-- /angle /desired_angle /Forces /t265_pos /desired_altitude"/> -->
 </launch>

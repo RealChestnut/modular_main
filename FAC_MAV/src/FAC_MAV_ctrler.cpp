@@ -957,8 +957,8 @@ sensor_msgs::JointState servo_msg_create(double rr, double rp){
 	servo_msg.header.stamp=ros::Time::now();
 
 	servo_msg.name.resize(2);
-	servo_msg.name[0]="id_1";
-	servo_msg.name[1]="id_2";
+	servo_msg.name[0]="id_11";
+	servo_msg.name[1]="id_12";
 
 	servo_msg.position.resize(2);
 	servo_msg.position[0]=rr;
@@ -1053,9 +1053,9 @@ void t265OdomCallback(const nav_msgs::Odometry::ConstPtr& msg){
 	double global_Y_dot = v(1)*(cos(imu_rpy.x)*cos(imu_rpy.z)+sin(imu_rpy.x)*sin(imu_rpy.z)*sin(imu_rpy.y))-v(2)*(cos(imu_rpy.z)*sin(imu_rpy.x)-cos(imu_rpy.x)*sin(imu_rpy.z)*sin(imu_rpy.y))+v(0)*cos(imu_rpy.y)*sin(imu_rpy.z);
 	double global_Z_dot = -v(0)*sin(imu_rpy.y)+v(2)*cos(imu_rpy.x)*cos(imu_rpy.y)+v(1)*cos(imu_rpy.y)*sin(imu_rpy.x);
 
-	lin_vel.x=v(0);//global_X_dot;
-	lin_vel.y=v(1);//global_Y_dot;
-	lin_vel.z=v(2);//global_Z_dot;
+	lin_vel.x=global_X_dot; //v(0)
+	lin_vel.y=global_Y_dot; //v(1)
+	lin_vel.z=global_Z_dot; //v(2)
 	//ROS_INFO("Attitude - [r: %f  p: %f  y:%f]",cam_att(0),cam_att(1),cam_att(2));
 	//ROS_INFO("Rotate Linear_velocity - [x: %f  y: %f  z:%f]",v(0),v(1),v(2));
 	//ROS_INFO("Linear_velocity - [x: %f  y: %f  z:%f]",cam_v(0),cam_v(1),cam_v(2));
