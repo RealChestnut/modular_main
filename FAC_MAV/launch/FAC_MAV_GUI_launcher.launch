@@ -106,11 +106,9 @@
 	<param name="PWM_3_cal" value="1000."/>
 	<param name="PWM_4_cal" value="1000."/>
 	<param name="PWM_5_cal" value="1000."/>
-	<param name="PWM_6_cal" value="1200."/>
-	<param name="PWM_7_cal" value="1000."/>
+	<param name="PWM_6_cal" value="1000."/>
+	<param name="PWM_7_cal" value="1200."/>
 
     <node name="FAC_MAV_node"  pkg="FAC_MAV" type="FAC_MAV_GUI_ctrler"  output="screen"/>
 
-    <!-- Rosbag -->
-    <node pkg="rosbag" type="record" name="record" output="screen" args="-o /home/mrl_latte_sub/catkin_ws/src/FAC_MAV/bag/ -a" /><!-- /angle /desired_angle /Forces /t265_pos /desired_altitude"/> -->
 </launch>

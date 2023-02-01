@@ -205,7 +205,7 @@ static double XY_limit = 0.5;
 static double XYZ_dot_limit=1;
 static double XYZ_ddot_limit=2;
 static double alpha_beta_limit=1;
-static double hardware_servo_limit=0.2; //0.3
+static double hardware_servo_limit=0.3; //0.3
 static double servo_command_limit = 0.2;
 static double tau_y_limit = 0.3;
 
@@ -767,8 +767,9 @@ void publisherSet(){
         Servo_sub_cmd.data[0] = theta21_command;
         Servo_sub_cmd.data[1] = theta22_command;
 	
-//	ROS_INFO("th_21_cmd :%lf, th_22_cmd :%lf \n",theta21_command,theta22_command);
-//	ROS_INFO("th_11_cmd :%lf, th_12_cmd :%lf \n",theta11_command,theta12_command);
+	//ROS_INFO("th_21_cmd :%lf, th_22_cmd :%lf \n",theta21_command,theta22_command);
+	//ROS_INFO("th_11_cmd :%lf, th_12_cmd :%lf \n",theta11_command,theta12_command);
+	//ROS_INFO("F_xd, F_yd :: %lf | %lf",F_xd,F_yd);
 
 	Servo_main_cmd.data.resize(2);
 	Servo_main_cmd.data[0]= theta11_command;
@@ -865,7 +866,7 @@ void rpyT_ctrl() {
 		if(position_mode){
 			X_d = X_d_base - XY_limit*(((float)Sbus[1]-(float)1500)/(float)500);
 			Y_d = Y_d_base + XY_limit*(((float)Sbus[3]-(float)1500)/(float)500);
-		
+			
 			e_X = X_d - pos.x;
 			e_Y = Y_d - pos.y;
 			e_X_i += e_X * delta_t.count();
@@ -903,6 +904,7 @@ void rpyT_ctrl() {
 			p_d = 0.0;
 			F_xd = mass*(X_ddot_d*cos(imu_rpy.z)*cos(imu_rpy.y)+Y_ddot_d*sin(imu_rpy.z)*cos(imu_rpy.y)-(Z_ddot_d-g)*sin(imu_rpy.y));
 			F_yd = mass*(-X_ddot_d*(cos(imu_rpy.x)*sin(imu_rpy.z)-cos(imu_rpy.z)*sin(imu_rpy.x)*sin(imu_rpy.y))+Y_ddot_d*(cos(imu_rpy.x)*cos(imu_rpy.z)+sin(imu_rpy.x)*sin(imu_rpy.y)*sin(imu_rpy.z))+(Z_ddot_d-g)*cos(imu_rpy.y)*sin(imu_rpy.x));
+			
 			//if(position_mode) ROS_INFO("Position & Tilt !!!");
 			//else ROS_INFO("Velocity & Tilt !!!");
 		}
@@ -973,6 +975,7 @@ void rpyT_ctrl() {
 	if(F_zd > -0.5*mass*g) F_zd = -0.5*mass*g;
 	if(F_zd <= -1.5*mass*g) F_zd = -1.5*mass*g; //1.5
 	
+	//ROS_INFO("x : %lf,dx : %lf,ddx : %lf, \n",X_d,X_dot_d,X_ddot_d);	
 
 	//DOB-----------------------------------------------------
 		//disturbance_Observer();
@@ -1015,10 +1018,10 @@ void ud_to_PWMs(double tau_r_des, double tau_p_des, double tau_y_des, double Thr
 	//Tilting type
 	else {
 		//22.10.27 should be changed
-		theta11_command = asin(F_yd/(F_cmd_comb(0)+F_cmd_comb(2)));
-		theta12_command = asin(-F_xd/(F_cmd_comb(1)+F_cmd_comb(3)));
-		theta21_command = asin(F_yd/(F_cmd_comb(4)+F_cmd_comb(6)));
-		theta22_command = asin(-F_xd/(F_cmd_comb(5)+F_cmd_comb(7)));
+		theta11_command = asin((F_yd/2)/(F_cmd_comb(0)+F_cmd_comb(2)));
+		theta12_command = asin((-F_xd/2)/(F_cmd_comb(1)+F_cmd_comb(3)));
+		theta21_command = asin((F_yd/2)/(F_cmd_comb(4)+F_cmd_comb(6)));
+		theta22_command = asin((-F_xd/2)/(F_cmd_comb(5)+F_cmd_comb(7)));
  		if(fabs(theta11_command)>hardware_servo_limit) theta11_command = (theta11_command/fabs(theta11_command))*hardware_servo_limit;
 		if(fabs(theta12_command)>hardware_servo_limit) theta12_command = (theta12_command/fabs(theta12_command))*hardware_servo_limit;
 		if(fabs(theta21_command)>hardware_servo_limit) theta21_command = (theta21_command/fabs(theta21_command))*hardware_servo_limit;
