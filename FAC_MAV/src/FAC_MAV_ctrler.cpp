@@ -596,7 +596,7 @@ int main(int argc, char **argv){
 }
 
 void publisherSet(){
-
+/*
 	end=std::chrono::high_resolution_clock::now();
 	delta_t=end-start; 
 	dt.data=delta_t.count();
@@ -641,9 +641,9 @@ void publisherSet(){
 		//pwm_Command(Sbus[2],Sbus[2],Sbus[2],Sbus[2],Sbus[2],Sbus[2],Sbus[2],Sbus[2]);
 		rpyT_ctrl();		
 	}
+*/
 
-
-	//pwm_Calibration(); // for calibration
+	pwm_Calibration(); // for calibration
 
 // publish values	
 	angle_d.x=r_d;

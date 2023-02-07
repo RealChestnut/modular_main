@@ -1117,8 +1117,8 @@ void pwm_Arm(){
 }
 void pwm_Calibration(){
 	if(isArm) pwm_Arm();
-	//if(isKill) pwm_Kill();
-	else pwm_Kill();
+	if(isKill) pwm_Kill();
+	//else pwm_Kill();
 }
 
 void kalman_Filtering(){

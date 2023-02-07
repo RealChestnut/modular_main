@@ -89,6 +89,7 @@ std_msgs::Float32 dt;
 std_msgs::Float32MultiArray Force_cmd; 
 std_msgs::Float32MultiArray Servo_sub_cmd;
 std_msgs::Float32MultiArray Servo_main_cmd;
+std_msgs::Int32MultiArray Sbus_data_plot;
 std_msgs::Bool kill_sub;
 std_msgs::Bool tilt_sub;
 //for time checker
@@ -203,7 +204,8 @@ static double T_limit = 58;//(N)
 static double altitude_limit = 1;//(m)
 static double XY_limit = 0.5;
 static double XYZ_dot_limit=1;
-static double XYZ_ddot_limit=2;
+static double XYZ_ddot_limit=4;
+static double XYZ_ddot_limit_tilt=1;
 static double alpha_beta_limit=1;
 static double hardware_servo_limit=0.3; //0.3
 static double servo_command_limit = 0.2;
@@ -416,6 +418,7 @@ ros::Publisher angular_Acceleration;
 ros::Publisher sine_wave_data;
 ros::Publisher disturbance;
 ros::Publisher linear_acceleration;
+ros::Publisher sbus_data;
 //----------------------------------------------------
 
 // Combine drone set
@@ -652,6 +655,7 @@ int main(int argc, char **argv){
 	desired_velocity = nh.advertise<geometry_msgs::Vector3>("lin_vel_d",10);
 	angular_Acceleration = nh.advertise<geometry_msgs::Vector3>("ang_accel",10);
 	linear_acceleration = nh.advertise<geometry_msgs::Vector3>("lin_acl",10);
+	sbus_data = nh.advertise<std_msgs::Int32MultiArray>("Sbus_data_plot",10);
 	
 	master_servo_cmd_pub = nh.advertise<std_msgs::Float32MultiArray>("master_servo_cmd_pub",10);
 	//
@@ -738,6 +742,12 @@ void publisherSet(){
 
 	}
 
+
+	//ROS_INFO("test : %f, %f, %f",lin_vel.x,lin_vel.y,lin_vel.z);
+	//ROS_INFO("test : %f, %f, %f",desired_lin_vel.x,desired_lin_vel.y,desired_lin_vel.z);
+
+
+
 	//pwm_Calibration();	
 	angle_d.x=r_d;
 	angle_d.y=p_d;
@@ -776,7 +786,16 @@ void publisherSet(){
 	Servo_main_cmd.data[1]= theta12_command;
 	master_servo_cmd_pub.publish(Servo_main_cmd);
 	
-
+	Sbus_data_plot.data.resize(8);
+	Sbus_data_plot.data[0]=Sbus[0];
+	Sbus_data_plot.data[1]=Sbus[1];
+	Sbus_data_plot.data[2]=Sbus[2];
+	Sbus_data_plot.data[3]=Sbus[3];
+	Sbus_data_plot.data[4]=Sbus[4];
+	Sbus_data_plot.data[5]=Sbus[5];
+	Sbus_data_plot.data[6]=Sbus[6];
+	Sbus_data_plot.data[7]=Sbus[7];
+	sbus_data.publish(Sbus_data_plot);
 
 	CoM.x = x_c_hat;
 	CoM.y = y_c_hat;
@@ -806,6 +825,7 @@ void publisherSet(){
         linear_acceleration.publish(lin_acl);
 	prev_angular_Vel = imu_ang_vel;
 	prev_lin_vel = lin_vel;
+	
 	
 	//data checker
 }
@@ -926,8 +946,8 @@ void rpyT_ctrl() {
 		if(tilt_mode){
 			r_d = 0.0;
 			p_d = 0.0;
-			F_xd=-mass*XYZ_ddot_limit*(((float)Sbus[1]-(float)1500)/(float)500);
-			F_yd=mass*XYZ_ddot_limit*(((float)Sbus[3]-(float)1500)/(float)500);
+			F_xd=-mass*XYZ_ddot_limit_tilt*(((float)Sbus[1]-(float)1500)/(float)500);
+			F_yd=mass*XYZ_ddot_limit_tilt*(((float)Sbus[3]-(float)1500)/(float)500);
 			//ROS_INFO("Attitude & Tilt !!!");
 
 		}
@@ -1106,6 +1126,7 @@ void imu_Callback(const sensor_msgs::Imu& msg){
 	else if(base_yaw - yaw_prev > pi) yaw_rotate_count--;
 	yaw_now = base_yaw+2*pi*yaw_rotate_count;
 	//ROS_INFO("now : %lf / prev : %lf / count : %d",yaw_now, yaw_prev, yaw_rotate_count);
+	
 	imu_rpy.z = yaw_now;
 	yaw_prev = base_yaw;
 	// ROS_INFO("imuCallback time : %f",(((double)ros::Time::now().sec-(double)imuTimer.sec)+((double)ros::Time::now().nsec-(double)imuTimer.nsec)/1000000000.));
@@ -1230,9 +1251,9 @@ void t265OdomCallback(const nav_msgs::Odometry::ConstPtr& msg){
 	double global_Y_dot = v(1)*(cos(imu_rpy.x)*cos(imu_rpy.z)+sin(imu_rpy.x)*sin(imu_rpy.z)*sin(imu_rpy.y))-v(2)*(cos(imu_rpy.z)*sin(imu_rpy.x)-cos(imu_rpy.x)*sin(imu_rpy.z)*sin(imu_rpy.y))+v(0)*cos(imu_rpy.y)*sin(imu_rpy.z);
 	double global_Z_dot = -v(0)*sin(imu_rpy.y)+v(2)*cos(imu_rpy.x)*cos(imu_rpy.y)+v(1)*cos(imu_rpy.y)*sin(imu_rpy.x);
 
-	lin_vel.x=global_X_dot; //v(0)
-	lin_vel.y=global_Y_dot; //V(1)
-	lin_vel.z=global_Z_dot;  //v(2)
+	lin_vel.x=global_X_dot; 
+	lin_vel.y=global_Y_dot;
+	lin_vel.z=global_Z_dot;
 	//ROS_INFO("Attitude - [r: %f  p: %f  y:%f]",cam_att(0),cam_att(1),cam_att(2));
 	//ROS_INFO("Rotate Linear_velocity - [x: %f  y: %f  z:%f]",v(0),v(1),v(2));
 	//ROS_INFO("Linear_velocity - [x: %f  y: %f  z:%f]",cam_v(0),cam_v(1),cam_v(2));

@@ -100,13 +100,13 @@
 		<param name="tilt_position_I_gain"	value="0.1"/>	
 		<param name="tilt_position_D_gain"	value="3.0"/>	
 	<!--MOtor PWM Changer for Calibration-->
-	<param name="PWM_0_cal" value="1000."/>
-	<param name="PWM_1_cal" value="1000."/>
-	<param name="PWM_2_cal" value="1000."/>
-	<param name="PWM_3_cal" value="1000."/>
-	<param name="PWM_4_cal" value="1000."/>
-	<param name="PWM_5_cal" value="1000."/>
-	<param name="PWM_6_cal" value="1000."/>
+	<param name="PWM_0_cal" value="1200."/>
+	<param name="PWM_1_cal" value="1200."/>
+	<param name="PWM_2_cal" value="1200."/>
+	<param name="PWM_3_cal" value="1200."/>
+	<param name="PWM_4_cal" value="1200."/>
+	<param name="PWM_5_cal" value="1200."/>
+	<param name="PWM_6_cal" value="1200."/>
 	<param name="PWM_7_cal" value="1200."/>
 
     <node name="FAC_MAV_node"  pkg="FAC_MAV" type="FAC_MAV_GUI_ctrler"  output="screen"/>
