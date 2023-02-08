@@ -179,7 +179,7 @@ int yaw_rotate_count = 0;
 
 static double r_arm = 0.109;// m // diagonal length between thruster : 218mm;
 static double l_servo = 0.015;
-static double mass = 4.8; //combined drone mass //2022.10.27
+static double mass = 6; //combined drone mass //4.8
 static double m1 =3.3; //master drone mass 22.10.27
 static double m2 =2.7; //slave drone mass  22.10.27
 static double frame_l = 0.32; //(cm) frame length 22.10.27
@@ -209,7 +209,7 @@ static double XYZ_ddot_limit_tilt=1;
 static double alpha_beta_limit=1;
 static double hardware_servo_limit=0.3; //0.3
 static double servo_command_limit = 0.2;
-static double tau_y_limit = 0.3;
+static double tau_y_limit = 0.5; //0.3
 
 double x_c_hat=0.0;
 double y_c_hat=0.0;
@@ -882,7 +882,7 @@ void rpyT_ctrl() {
 	lin_acl.y=accel_cutoff_freq*x_ay;
 	//ROS_INFO("%lf",time_count);
 
-	if(position_mode /*|| velocity_mode*/){
+	if(position_mode || velocity_mode){
 		if(position_mode){
 			X_d = X_d_base - XY_limit*(((float)Sbus[1]-(float)1500)/(float)500);
 			Y_d = Y_d_base + XY_limit*(((float)Sbus[3]-(float)1500)/(float)500);
@@ -897,13 +897,39 @@ void rpyT_ctrl() {
 			X_dot_d = Pp * e_X + Ip * e_X_i - Dp * lin_vel.x;
 			Y_dot_d = Pp * e_Y + Ip * e_Y_i - Dp * lin_vel.y;
 		}
-		/*if(velocity_mode){
+		if(velocity_mode){
 		  X_dot_d = -XYZ_dot_limit*(((double)Sbus[1]-(double)1500)/(double)500);
 		  Y_dot_d = XYZ_dot_limit*(((double)Sbus[3]-(double)1500)/(double)500);
-		  }*/	
+		  }
+		if(tilt_mode)
+		{
+			if(fabs(X_dot_d) > XYZ_dot_limit) X_dot_d = (X_dot_d/fabs(X_dot_d))*XYZ_dot_limit;
+                if(fabs(Y_dot_d) > XYZ_dot_limit) Y_dot_d = (Y_dot_d/fabs(Y_dot_d))*XYZ_dot_limit;
+                
+                desired_lin_vel.x = X_dot_d;
+                desired_lin_vel.y = Y_dot_d;
+
+                e_X_dot = X_dot_d - lin_vel.x;
+                e_Y_dot = Y_dot_d - lin_vel.y;
+                e_X_dot_i += e_X_dot * delta_t.count();
+                if (fabs(e_X_dot_i) > vel_integ_limit) e_X_dot_i = (e_X_dot_i / fabs(e_X_dot_i)) * vel_integ_limit;
+                e_Y_dot_i += e_Y_dot * delta_t.count();
+                if (fabs(e_Y_dot_i) > vel_integ_limit) e_Y_dot_i = (e_Y_dot_i / fabs(e_Y_dot_i)) * vel_integ_limit;
+
+                X_ddot_d = Pv * e_X_dot + Iv * e_X_dot_i - Dv * lin_acl.x;
+                Y_ddot_d = Pv * e_Y_dot + Iv * e_Y_dot_i - Dv * lin_acl.y;
+                if(fabs(X_ddot_d) > XYZ_ddot_limit_tilt) X_ddot_d = (X_ddot_d/fabs(X_ddot_d))*XYZ_ddot_limit_tilt;
+                if(fabs(Y_ddot_d) > XYZ_ddot_limit_tilt) Y_ddot_d = (Y_ddot_d/fabs(Y_ddot_d))*XYZ_ddot_limit_tilt;
+
+		}	
+
+		else
+		{
+
+		
 		if(fabs(X_dot_d) > XYZ_dot_limit) X_dot_d = (X_dot_d/fabs(X_dot_d))*XYZ_dot_limit;
 		if(fabs(Y_dot_d) > XYZ_dot_limit) Y_dot_d = (Y_dot_d/fabs(Y_dot_d))*XYZ_dot_limit;
-		//*/
+		
 		desired_lin_vel.x = X_dot_d;
 		desired_lin_vel.y = Y_dot_d;
 	
@@ -918,7 +944,9 @@ void rpyT_ctrl() {
 		Y_ddot_d = Pv * e_Y_dot + Iv * e_Y_dot_i - Dv * lin_acl.y;
 		if(fabs(X_ddot_d) > XYZ_ddot_limit) X_ddot_d = (X_ddot_d/fabs(X_ddot_d))*XYZ_ddot_limit;
 		if(fabs(Y_ddot_d) > XYZ_ddot_limit) Y_ddot_d = (Y_ddot_d/fabs(Y_ddot_d))*XYZ_ddot_limit;
-		
+		}
+
+
 		if(tilt_mode){
 			r_d = 0.0;
 			p_d = 0.0;
@@ -1175,17 +1203,17 @@ void sbusCallback(const std_msgs::Int16MultiArray::ConstPtr& array){
 
 	if(Sbus[6]<1300){
 		attitude_mode=true;
-		//velocity_mode=false;
+		velocity_mode=false;
 		position_mode=false;
 	}
 	else if(Sbus[6]<1700){
 		attitude_mode=false;
-		//velocity_mode=true;
+		velocity_mode=true;
 		position_mode=false;
 	}
 	else{
 		attitude_mode=false;
-		//velocity_mode=false;
+		velocity_mode=false;
 		position_mode=true;
 	}
 
