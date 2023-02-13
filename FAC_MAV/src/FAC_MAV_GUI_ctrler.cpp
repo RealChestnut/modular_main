@@ -1075,15 +1075,14 @@ void pwm_Kill(){
 	PWMs_val.data[5] = pwmMapping(1000.);
 	PWMs_val.data[6] = pwmMapping(1000.);
 	PWMs_val.data[7] = pwmMapping(1000.);
-	PWMs_val.data[8] = -1;
-	PWMs_val.data[9] = -1;
-	PWMs_val.data[10] = -1;
-	PWMs_val.data[11] = -1;
-	PWMs_val.data[12] = -1;
-	PWMs_val.data[13] = -1;
-	PWMs_val.data[14] = -1;
-	PWMs_val.data[15] = -1;
-
+	PWMs_val.data[8] = pwmMapping(1000.);
+	PWMs_val.data[9] = pwmMapping(1000.);
+	PWMs_val.data[10] = pwmMapping(1000.);
+	PWMs_val.data[11] = pwmMapping(1000.);
+	PWMs_val.data[12] = pwmMapping(1000.);
+	PWMs_val.data[13] = pwmMapping(1000.);
+	PWMs_val.data[14] = pwmMapping(1000.);
+	PWMs_val.data[15] = pwmMapping(1000.);
 }
 
 void pwm_Arm(){
@@ -1105,14 +1104,14 @@ void pwm_Arm(){
 	PWMs_val.data[5] = pwmMapping(PWM_5);
 	PWMs_val.data[6] = pwmMapping(PWM_6);
 	PWMs_val.data[7] = pwmMapping(PWM_7);
-	PWMs_val.data[8] = -1;
-	PWMs_val.data[9] = -1;
-	PWMs_val.data[10] = -1;
-	PWMs_val.data[11] = -1;
-	PWMs_val.data[12] = -1;
-	PWMs_val.data[13] = -1;
-	PWMs_val.data[14] = -1;
-	PWMs_val.data[15] = -1;
+	PWMs_val.data[8] = pwmMapping(PWM_0);
+	PWMs_val.data[9] = pwmMapping(PWM_0);
+	PWMs_val.data[10] = pwmMapping(PWM_0);
+	PWMs_val.data[11] = pwmMapping(PWM_0);
+	PWMs_val.data[12] = pwmMapping(PWM_0);
+	PWMs_val.data[13] = pwmMapping(PWM_0);
+	PWMs_val.data[14] = pwmMapping(PWM_0);
+	PWMs_val.data[15] = pwmMapping(PWM_0);
 
 }
 void pwm_Calibration(){

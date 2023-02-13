@@ -100,7 +100,7 @@
 		<param name="tilt_position_I_gain"	value="0.1"/>	
 		<param name="tilt_position_D_gain"	value="3.0"/>	
 	<!--MOtor PWM Changer for Calibration-->
-	<param name="PWM_0_cal" value="1200."/>
+	<param name="PWM_0_cal" value="2000."/>
 	<param name="PWM_1_cal" value="1200."/>
 	<param name="PWM_2_cal" value="1200."/>
 	<param name="PWM_3_cal" value="1200."/>

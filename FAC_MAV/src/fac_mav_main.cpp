@@ -187,7 +187,6 @@ static double diag = 0.32/sqrt(2); // (cm) diagonal frame length 22.10.27
 static double m_a = m1/(m1+m2); // mass ratio for master 22.10.29
 static double m_b = m2/(m1+m2); // mass ratio for slave 22.10.29
 
-
 //Propeller constants(DJI E800(3510 motors + 620S ESCs))
 static double b_over_k_ratio = 0.01;//F_i=k*(omega_i)^2, M_i=b*(omega_i)^2
 //--------------------------------------------------------
@@ -198,6 +197,7 @@ static double pi = 3.141592;//(rad)
 static double g = 9.80665;//(m/s^2)
 
 static double rp_limit = 0.3;//(rad)
+static double rp_limit_tilt = 0.1;//(rad)
 static double y_vel_limit = 0.01;//(rad/s)
 static double y_d_tangent_deadzone = (double)0.05 * y_vel_limit;//(rad/s)
 static double T_limit = 58;//(N) 
@@ -210,7 +210,8 @@ static double alpha_beta_limit=1;
 static double hardware_servo_limit=0.3; //0.3
 static double servo_command_limit = 0.2;
 static double tau_y_limit = 0.5; //0.3
-
+static double deg2rad= pi/180.0;
+static double rad2deg = 180.0/pi;
 double x_c_hat=0.0;
 double y_c_hat=0.0;
 double z_c_hat=0.0;
@@ -370,9 +371,9 @@ void rpyT_ctrl();
 void ud_to_PWMs(double tau_r_des, double tau_p_des, double tau_y_des, double Thrust_des);
 float Force_to_PWM(float F);
 void jointstateCallback(const sensor_msgs::JointState& msg);
-void jointstate_sub_Callback(const sensor_msgs::JointState& msg);
+//void jointstate_sub_Callback(const sensor_msgs::JointState& msg);
 void imu_Callback(const sensor_msgs::Imu& msg);
-sensor_msgs::JointState servo_msg_create(float rr, float rp);
+sensor_msgs::JointState servo_msg_create(float rr1, float rp1,float rr2, float rp2);
 void sbusCallback(const std_msgs::Int16MultiArray::ConstPtr& array);
 void batteryCallback(const std_msgs::Int16& msg);
 void posCallback(const geometry_msgs::Vector3& msg);
@@ -383,7 +384,7 @@ void setCM();
 void setCM_comb();//combined Control matrix
 void publisherSet();
 int32_t pwmMapping(int32_t pwm);
-void pwm_Command(int16_t pwm1, int16_t pwm2, int16_t pwm3, int16_t pwm4, int16_t pwm5, int16_t pwm6, int16_t pwm7, int16_t pwm8);
+void pwm_Command(int16_t pwm11, int16_t pwm12, int16_t pwm13, int16_t pwm14, int16_t pwm15, int16_t pwm16, int16_t pwm17, int16_t pwm18,int16_t pwm21, int16_t pwm22, int16_t pwm23, int16_t pwm24, int16_t pwm25, int16_t pwm26, int16_t pwm27, int16_t pwm28 );
 void pwm_Kill();
 void pwm_Max();
 void pwm_Arm();
@@ -397,6 +398,10 @@ void sine_wave_vibration();
 //Publisher Group--------------------------------------
 ros::Publisher PWMs;
 ros::Publisher goal_dynamixel_position_;
+
+//
+//
+
 ros::Publisher euler;
 ros::Publisher desired_angle;
 ros::Publisher Forces;
@@ -657,19 +662,23 @@ int main(int argc, char **argv){
 	linear_acceleration = nh.advertise<geometry_msgs::Vector3>("lin_acl",10);
 	sbus_data = nh.advertise<std_msgs::Int32MultiArray>("Sbus_data_plot",10);
 	
+	
 	master_servo_cmd_pub = nh.advertise<std_msgs::Float32MultiArray>("master_servo_cmd_pub",10);
-	//
 	master2slave_force_pub =nh.advertise<std_msgs::Float32MultiArray>("master2slave_force_pub",100);
 	master2slave_servo_pub =nh.advertise<std_msgs::Float32MultiArray>("master2slave_servo_pub",100);
 	
+	/*
 	kill_switch_sub = nh.advertise<std_msgs::Bool>("kill_switch_sub",1);
 	tilt_switch_sub = nh.advertise<std_msgs::Bool>("tilt_switch_sub",1);
+	*/
+
+	//
 
 
 	//
 
     ros::Subscriber dynamixel_state = nh.subscribe("joint_states",10,jointstateCallback,ros::TransportHints().tcpNoDelay());
-    ros::Subscriber Servo_angle_sub = nh. subscribe("servo_angle_sub",10,jointstate_sub_Callback,ros::TransportHints().tcpNoDelay()); 
+//    ros::Subscriber Servo_angle_sub = nh. subscribe("servo_angle_sub",10,jointstate_sub_Callback,ros::TransportHints().tcpNoDelay()); 
     ros::Subscriber att = nh.subscribe("/imu/data",1,imu_Callback,ros::TransportHints().tcpNoDelay());
     ros::Subscriber rc_in = nh.subscribe("/sbus",10,sbusCallback,ros::TransportHints().tcpNoDelay());
 	ros::Subscriber battery_checker = nh.subscribe("/battery",10,batteryCallback,ros::TransportHints().tcpNoDelay());
@@ -683,6 +692,10 @@ int main(int argc, char **argv){
 }
 
 void publisherSet(){
+	
+	
+	
+
 	//for time delay check//	
 	end=std::chrono::high_resolution_clock::now();
 	delta_t=end-start; 
@@ -747,7 +760,6 @@ void publisherSet(){
 	//ROS_INFO("test : %f, %f, %f",desired_lin_vel.x,desired_lin_vel.y,desired_lin_vel.z);
 
 
-
 	//pwm_Calibration();	
 	angle_d.x=r_d;
 	angle_d.y=p_d;
@@ -766,24 +778,24 @@ void publisherSet(){
         Force_comb.data[6] = F23;
         Force_comb.data[7] = F24;
 
-	Force_cmd.data.resize(4);
+	//Force_cmd.data.resize(4);
 
-        Force_cmd.data[0] = F21;
+        /*Force_cmd.data[0] = F21;
         Force_cmd.data[1] = F22;
         Force_cmd.data[2] = F23;
-        Force_cmd.data[3] = F24;
+        Force_cmd.data[3] = F24;*/
 
         Servo_sub_cmd.data.resize(2);
-        Servo_sub_cmd.data[0] = theta21_command;
-        Servo_sub_cmd.data[1] = theta22_command;
+/*        Servo_sub_cmd.data[0] = theta21_command;
+        Servo_sub_cmd.data[1] = theta22_command; */
 	
 	//ROS_INFO("th_21_cmd :%lf, th_22_cmd :%lf \n",theta21_command,theta22_command);
 	//ROS_INFO("th_11_cmd :%lf, th_12_cmd :%lf \n",theta11_command,theta12_command);
 	//ROS_INFO("F_xd, F_yd :: %lf | %lf",F_xd,F_yd);
 
 	Servo_main_cmd.data.resize(2);
-	Servo_main_cmd.data[0]= theta11_command;
-	Servo_main_cmd.data[1]= theta12_command;
+/*	Servo_main_cmd.data[0]= theta11_command;
+	Servo_main_cmd.data[1]= theta12_command;*/
 	master_servo_cmd_pub.publish(Servo_main_cmd);
 	
 	Sbus_data_plot.data.resize(8);
@@ -802,16 +814,16 @@ void publisherSet(){
 	CoM.z = z_c_hat;
 	PWMs.publish(PWMs_cmd);// PWMs_d value
         //22.10.27 master to slave data
-        master2slave_force_pub.publish(Force_cmd);
+        //master2slave_force_pub.publish(Force_cmd);
         master2slave_servo_pub.publish(Servo_sub_cmd);
 	//22.11.01
-        kill_switch_sub.publish(kill_sub);
-	tilt_switch_sub.publish(tilt_sub);
+        //kill_switch_sub.publish(kill_sub);
+	//tilt_switch_sub.publish(tilt_sub);
         //
         euler.publish(imu_rpy);//rpy_act value
         desired_angle.publish(angle_d);//rpy_d value
         Forces.publish(Force_comb);// force conclusion
-        goal_dynamixel_position_.publish(servo_msg_create(theta11_command,-theta12_command)); // desired theta
+        goal_dynamixel_position_.publish(servo_msg_create(theta11_command,-theta12_command,theta21_command,-theta22_command)); // desired theta
         desired_torque.publish(torque_d); // torque desired
         linear_velocity.publish(lin_vel); // actual linear velocity
         PWM_generator.publish(PWMs_val);
@@ -948,8 +960,11 @@ void rpyT_ctrl() {
 
 
 		if(tilt_mode){
+			/*
 			r_d = 0.0;
-			p_d = 0.0;
+			p_d = 0.0;*/
+			if(fabs(r_d)>rp_limit_tilt) r_d = (r_d/fabs(r_d))*rp_limit_tilt;
+                        if(fabs(p_d)>rp_limit_tilt) p_d = (p_d/fabs(p_d))*rp_limit_tilt;
 			F_xd = mass*(X_ddot_d*cos(imu_rpy.z)*cos(imu_rpy.y)+Y_ddot_d*sin(imu_rpy.z)*cos(imu_rpy.y)-(Z_ddot_d-g)*sin(imu_rpy.y));
 			F_yd = mass*(-X_ddot_d*(cos(imu_rpy.x)*sin(imu_rpy.z)-cos(imu_rpy.z)*sin(imu_rpy.x)*sin(imu_rpy.y))+Y_ddot_d*(cos(imu_rpy.x)*cos(imu_rpy.z)+sin(imu_rpy.x)*sin(imu_rpy.y)*sin(imu_rpy.z))+(Z_ddot_d-g)*cos(imu_rpy.y)*sin(imu_rpy.x));
 			
@@ -972,10 +987,16 @@ void rpyT_ctrl() {
 	}
 	if(attitude_mode){
 		if(tilt_mode){
+			/*
 			r_d = 0.0;
 			p_d = 0.0;
 			F_xd=-mass*XYZ_ddot_limit_tilt*(((float)Sbus[1]-(float)1500)/(float)500);
 			F_yd=mass*XYZ_ddot_limit_tilt*(((float)Sbus[3]-(float)1500)/(float)500);
+			*/
+			r_d=rp_limit*(((float)Sbus[3]-(float)1500)/(float)500);
+                        p_d=rp_limit*(((float)Sbus[1]-(float)1500)/(float)500);
+			F_xd=0.0;
+                        F_yd=0.0;
 			//ROS_INFO("Attitude & Tilt !!!");
 
 		}
@@ -1066,16 +1087,23 @@ void ud_to_PWMs(double tau_r_des, double tau_p_des, double tau_y_des, double Thr
 	//Tilting type
 	else {
 		//22.10.27 should be changed
-		theta11_command = asin((F_yd/2)/(F_cmd_comb(0)+F_cmd_comb(2)));
-		theta12_command = asin((-F_xd/2)/(F_cmd_comb(1)+F_cmd_comb(3)));
-		theta21_command = asin((F_yd/2)/(F_cmd_comb(4)+F_cmd_comb(6)));
-		theta22_command = asin((-F_xd/2)/(F_cmd_comb(5)+F_cmd_comb(7)));
+		theta11_command = deg2rad*10.0;//asin((F_yd/2)/(F_cmd_comb(0)+F_cmd_comb(2)));
+		theta12_command = deg2rad*10.0;//asin((-F_xd/2)/(F_cmd_comb(1)+F_cmd_comb(3)));
+		theta21_command = -deg2rad*10.0;//asin((F_yd/2)/(F_cmd_comb(4)+F_cmd_comb(6)));
+		theta22_command = -deg2rad*10.0;//asin((-F_xd/2)/(F_cmd_comb(5)+F_cmd_comb(7)));
  		if(fabs(theta11_command)>hardware_servo_limit) theta11_command = (theta11_command/fabs(theta11_command))*hardware_servo_limit;
 		if(fabs(theta12_command)>hardware_servo_limit) theta12_command = (theta12_command/fabs(theta12_command))*hardware_servo_limit;
 		if(fabs(theta21_command)>hardware_servo_limit) theta21_command = (theta21_command/fabs(theta21_command))*hardware_servo_limit;
                 if(fabs(theta22_command)>hardware_servo_limit) theta22_command = (theta22_command/fabs(theta22_command))*hardware_servo_limit;
 
 	}
+	
+	Servo_sub_cmd.data[0] = theta21_command;
+        Servo_sub_cmd.data[1] = theta22_command;
+
+	Servo_main_cmd.data[0]= theta11_command;
+        Servo_main_cmd.data[1]= theta12_command;	
+	
 	F11 = (F_cmd_comb(0));
 	F12 = (F_cmd_comb(1));
 	F13 = (F_cmd_comb(2));
@@ -1084,8 +1112,14 @@ void ud_to_PWMs(double tau_r_des, double tau_p_des, double tau_y_des, double Thr
 	F22 = (F_cmd_comb(5));
 	F23 = (F_cmd_comb(6));
 	F24 = (F_cmd_comb(7));
+/*
+	Force_cmd.data[0] = F21;
+        Force_cmd.data[1] = F22;
+        Force_cmd.data[2] = F23;
+        Force_cmd.data[3] = F24;
+*/
 
-	pwm_Command(Force_to_PWM(F11),Force_to_PWM(F12), Force_to_PWM(F13), Force_to_PWM(F14), Force_to_PWM(F11), Force_to_PWM(F12), Force_to_PWM(F13), Force_to_PWM(F14));
+	pwm_Command(Force_to_PWM(F11),Force_to_PWM(F12), Force_to_PWM(F13), Force_to_PWM(F14), Force_to_PWM(F11), Force_to_PWM(F12), Force_to_PWM(F13), Force_to_PWM(F14),Force_to_PWM(F23),Force_to_PWM(F24), Force_to_PWM(F21), Force_to_PWM(F22), Force_to_PWM(F23), Force_to_PWM(F24), Force_to_PWM(F21), Force_to_PWM(F22));
 	
 	// ROS_INFO("1:%d, 2:%d, 3:%d, 4:%d",PWMs_cmd.data[0], PWMs_cmd.data[1], PWMs_cmd.data[2], PWMs_cmd.data[3]);
 	// ROS_INFO("%f 1:%d, 2:%d, 3:%d, 4:%d",z_d,PWMs_cmd.data[0], PWMs_cmd.data[1], PWMs_cmd.data[2], PWMs_cmd.data[3]);
@@ -1124,15 +1158,20 @@ void jointstateCallback(const sensor_msgs::JointState& msg){
     	rac_servo_value=msg;
 	theta11=msg.position[0];
 	theta12=-msg.position[1];
-    	//ROS_INFO("theta11:%lf   theta12:%lf",theta11, theta12);
+
+	theta21=msg.position[2];
+	theta22=-msg.position[3];
+
+    	ROS_INFO("theta11:%lf,   theta12:%lf,theta21:%lf, theta22:%lf",theta11, theta12,theta21,theta22);
 }
+/*
 
 void jointstate_sub_Callback(const sensor_msgs::JointState& msg){
         rac_servo_value=msg;
         theta21=msg.position[0];
         theta22=msg.position[1];
         //ROS_INFO("theta21:%lf   theta22:%lf",theta21, theta22);
-}
+}*/
 ros::Time imuTimer;
 
 void imu_Callback(const sensor_msgs::Imu& msg){
@@ -1165,18 +1204,26 @@ void filterCallback(const sensor_msgs::Imu& msg){
 	filtered_angular_rate=msg.angular_velocity;
 }
 
-sensor_msgs::JointState servo_msg_create(float rr, float rp){
+sensor_msgs::JointState servo_msg_create(float rr1, float rp1, float rr2,float rp2){
 	sensor_msgs::JointState servo_msg;
 
 	servo_msg.header.stamp=ros::Time::now();
 
-	servo_msg.name.resize(2);
+	servo_msg.name.resize(4);
 	servo_msg.name[0]="id_11";
 	servo_msg.name[1]="id_12";
 
-	servo_msg.position.resize(2);
-	servo_msg.position[0]=rr;
-	servo_msg.position[1]=rp;
+	//
+	servo_msg.name[2]="id_21";
+        servo_msg.name[3]="id_22";		
+	//
+
+	servo_msg.position.resize(4);
+	servo_msg.position[0]=rr1;
+	servo_msg.position[1]=rp1;
+	//
+	servo_msg.position[2]=rr2;
+        servo_msg.position[3]=rp2;
 	//ROS_INFO("rr: %lf, rp: %lf",rr,rp);
 	return servo_msg;
 }
@@ -1292,33 +1339,41 @@ int32_t pwmMapping(int32_t pwm){
 	return (int32_t)(65535.*pwm/(1./pwm_freq*1000000.));
 }
 
-void pwm_Command(int16_t pwm1, int16_t pwm2, int16_t pwm3, int16_t pwm4, int16_t pwm5, int16_t pwm6, int16_t pwm7, int16_t pwm8){
-	PWMs_cmd.data.resize(8);
-	PWMs_cmd.data[0] = pwm1;
-	PWMs_cmd.data[1] = pwm2;
-	PWMs_cmd.data[2] = pwm3;
-	PWMs_cmd.data[3] = pwm4;
-	PWMs_cmd.data[4] = pwm5;
-	PWMs_cmd.data[5] = pwm6;
-	PWMs_cmd.data[6] = pwm7;
-	PWMs_cmd.data[7] = pwm8;
+void pwm_Command(int16_t pwm11, int16_t pwm12, int16_t pwm13, int16_t pwm14, int16_t pwm15, int16_t pwm16, int16_t pwm17, int16_t pwm18,int16_t pwm21, int16_t pwm22, int16_t pwm23, int16_t pwm24, int16_t pwm25, int16_t pwm26, int16_t pwm27, int16_t pwm28){
+	PWMs_cmd.data.resize(16);
+	PWMs_cmd.data[0] = pwm11;
+	PWMs_cmd.data[1] = pwm12;
+	PWMs_cmd.data[2] = pwm13;
+	PWMs_cmd.data[3] = pwm14;
+	PWMs_cmd.data[4] = pwm15;
+	PWMs_cmd.data[5] = pwm16;
+	PWMs_cmd.data[6] = pwm17;
+	PWMs_cmd.data[7] = pwm18;
+	PWMs_cmd.data[8] = pwm21;
+        PWMs_cmd.data[9] = pwm22;
+        PWMs_cmd.data[10] = pwm23;
+        PWMs_cmd.data[11] = pwm24;
+        PWMs_cmd.data[12] = pwm25;
+        PWMs_cmd.data[13] = pwm26;
+        PWMs_cmd.data[14] = pwm27;
+        PWMs_cmd.data[15] = pwm28;
 	PWMs_val.data.resize(16);
-	PWMs_val.data[0] = pwmMapping(pwm1);
-	PWMs_val.data[1] = pwmMapping(pwm2);
-	PWMs_val.data[2] = pwmMapping(pwm3);
-	PWMs_val.data[3] = pwmMapping(pwm4);
-	PWMs_val.data[4] = pwmMapping(pwm5);
-	PWMs_val.data[5] = pwmMapping(pwm6);
-	PWMs_val.data[6] = pwmMapping(pwm7);
-	PWMs_val.data[7] = pwmMapping(pwm8);
-	PWMs_val.data[8] = -1;
-	PWMs_val.data[9] = -1;
-	PWMs_val.data[10] = -1;
-	PWMs_val.data[11] = -1;
-	PWMs_val.data[12] = -1;
-	PWMs_val.data[13] = -1;
-	PWMs_val.data[14] = -1;
-	PWMs_val.data[15] = -1;
+	PWMs_val.data[0] = pwmMapping(pwm11);
+	PWMs_val.data[1] = pwmMapping(pwm12);
+	PWMs_val.data[2] = pwmMapping(pwm13);
+	PWMs_val.data[3] = pwmMapping(pwm14);
+	PWMs_val.data[4] = pwmMapping(pwm15);
+	PWMs_val.data[5] = pwmMapping(pwm16);
+	PWMs_val.data[6] = pwmMapping(pwm17);
+	PWMs_val.data[7] = pwmMapping(pwm18);
+	PWMs_val.data[8] = pwmMapping(pwm21);
+	PWMs_val.data[9] = pwmMapping(pwm22);
+	PWMs_val.data[10] = pwmMapping(pwm23);
+	PWMs_val.data[11] = pwmMapping(pwm24);
+	PWMs_val.data[12] = pwmMapping(pwm25);
+	PWMs_val.data[13] = pwmMapping(pwm26);
+	PWMs_val.data[14] = pwmMapping(pwm27);
+	PWMs_val.data[15] = pwmMapping(pwm28);
 
 }
 
@@ -1343,7 +1398,7 @@ void pwm_Max(){
 }
 
 void pwm_Kill(){
-	PWMs_cmd.data.resize(8);
+	PWMs_cmd.data.resize(16);
 	PWMs_cmd.data[0] = 1000;
 	PWMs_cmd.data[1] = 1000;
 	PWMs_cmd.data[2] = 1000;
@@ -1352,6 +1407,14 @@ void pwm_Kill(){
 	PWMs_cmd.data[5] = 1000;
 	PWMs_cmd.data[6] = 1000;
 	PWMs_cmd.data[7] = 1000;
+	PWMs_cmd.data[8] = 1000;
+        PWMs_cmd.data[9] = 1000;
+        PWMs_cmd.data[10] = 1000;
+        PWMs_cmd.data[11] = 1000;
+        PWMs_cmd.data[12] = 1000;
+        PWMs_cmd.data[13] = 1000;
+        PWMs_cmd.data[14] = 1000;
+        PWMs_cmd.data[15] = 1000;
 	PWMs_val.data.resize(16);
 	PWMs_val.data[0] = pwmMapping(1000.);
 	PWMs_val.data[1] = pwmMapping(1000.);
@@ -1361,14 +1424,14 @@ void pwm_Kill(){
 	PWMs_val.data[5] = pwmMapping(1000.);
 	PWMs_val.data[6] = pwmMapping(1000.);
 	PWMs_val.data[7] = pwmMapping(1000.);
-	PWMs_val.data[8] = -1;
-	PWMs_val.data[9] = -1;
-	PWMs_val.data[10] = -1;
-	PWMs_val.data[11] = -1;
-	PWMs_val.data[12] = -1;
-	PWMs_val.data[13] = -1;
-	PWMs_val.data[14] = -1;
-	PWMs_val.data[15] = -1;
+	PWMs_val.data[8] = pwmMapping(1000.);
+	PWMs_val.data[9] = pwmMapping(1000.);
+	PWMs_val.data[10] = pwmMapping(1000.);
+	PWMs_val.data[11] = pwmMapping(1000.);
+	PWMs_val.data[12] = pwmMapping(1000.);
+	PWMs_val.data[13] = pwmMapping(1000.);
+	PWMs_val.data[14] = pwmMapping(1000.);
+	PWMs_val.data[15] = pwmMapping(1000.);
 
 }
 
@@ -1383,7 +1446,7 @@ void pwm_Arm(){
 	PWMs_cmd.data[6] = 1200;
 	PWMs_cmd.data[7] = 1200;
 	PWMs_val.data.resize(16);
-	PWMs_val.data[0] = pwmMapping(1200.);
+	PWMs_val.data[0] = pwmMapping(2000.);
 	PWMs_val.data[1] = pwmMapping(2000.);
 	PWMs_val.data[2] = pwmMapping(2000.);
 	PWMs_val.data[3] = pwmMapping(2000.);
@@ -1391,21 +1454,21 @@ void pwm_Arm(){
 	PWMs_val.data[5] = pwmMapping(2000.);
 	PWMs_val.data[6] = pwmMapping(2000.);
 	PWMs_val.data[7] = pwmMapping(2000.);
-	PWMs_val.data[8] = -1;
-	PWMs_val.data[9] = -1;
-	PWMs_val.data[10] = -1;
-	PWMs_val.data[11] = -1;
-	PWMs_val.data[12] = -1;
-	PWMs_val.data[13] = -1;
-	PWMs_val.data[14] = -1;
-	PWMs_val.data[15] = -1;
+	PWMs_val.data[8] = pwmMapping(2000.);
+	PWMs_val.data[9] = pwmMapping(2000.);
+	PWMs_val.data[10] = pwmMapping(2000.);
+	PWMs_val.data[11] = pwmMapping(2000.);
+	PWMs_val.data[12] = pwmMapping(2000.);
+	PWMs_val.data[13] = pwmMapping(2000.);
+	PWMs_val.data[14] = pwmMapping(2000.);
+	PWMs_val.data[15] = pwmMapping(2000.);
 
 }
 void pwm_Calibration(){
 	//if(Sbus[4]>1500) pwm_Arm();
 	//else pwm_Kill();
-	if(Sbus[6]<1300) pwm_Kill();
-        if(Sbus[6]<1700) pwm_Arm();
+	if(kill_mode) pwm_Kill();
+	else pwm_Arm();
 //ROS_INFO("Sbus[6] : %d", Sbus[6]);	
 }
 
