@@ -5,6 +5,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <cmath>
 #define PI 3.141592
+#define rad2deg PI/180.0
 
 int main(int argc, char **argv){
     ros::init(argc,argv,"setting_world_tf");
@@ -15,11 +16,11 @@ int main(int argc, char **argv){
     static_transformStamped.header.stamp = ros::Time::now();
     static_transformStamped.header.frame_id="world"; //world
     static_transformStamped.child_frame_id="rs_t265_odom_frame";
-    static_transformStamped.transform.translation.x=-0.16/4*sqrt(2.0);
-    static_transformStamped.transform.translation.y=3*0.16/4*sqrt(2.0);
+    static_transformStamped.transform.translation.x=(-0.16/4*sqrt(2.0))-0.115;
+    static_transformStamped.transform.translation.y=(3*0.16/4*sqrt(2.0))+0.115;
     static_transformStamped.transform.translation.z=0.152;
     tf2::Quaternion quat;
-    quat.setRPY(0.0,0.0,-45.0*PI/180.0);//-45
+    quat.setRPY(0.0,0,-45.0*rad2deg);//-45
     static_transformStamped.transform.rotation.x=quat.x();
     static_transformStamped.transform.rotation.y=quat.y();
     static_transformStamped.transform.rotation.z=quat.z();

@@ -42,6 +42,7 @@ geometry_msgs::Vector3 angle_d;
 geometry_msgs::Vector3 lin_vel;
 geometry_msgs::Vector3 lin_vel_d;
 std_msgs::Float32 delta_time;
+std_msgs::Float32 battery_voltage_main; 
 
 float theta11=0, theta12=0, theta21=0, theta22=0;
 float theta11_des=0, theta12_des=0, theta21_des=0, theta22_des=0;
@@ -52,6 +53,7 @@ float thrust11=0,thrust12=0,thrust13=0,thrust14=0;
 float thrust21=0,thrust22=0,thrust23=0,thrust24=0;
 float F_xd=0,F_yd=0,F_zd=0;
 float tau_r_d=0, tau_p_d=0, tau_y_d=0;
+
 
 int16_t PWM_data_0=0;
 int16_t PWM_data_1=0;
@@ -90,7 +92,7 @@ void desired_theta_sub_callback(const std_msgs::Float32MultiArray::ConstPtr& msg
 void desired_thrust_callback(const std_msgs::Float32MultiArray::ConstPtr& msg);
 void desired_force_callback(const geometry_msgs::Vector3& msg);
 void desired_torque_callback(const geometry_msgs::Vector3& msg);
-
+void batteryCallback(const std_msgs::Float32& msg);
 void delta_time_callback(const std_msgs::Float32& msg);
 void publisherSet();
 int main(int argc, char **argv)
@@ -115,7 +117,7 @@ int main(int argc, char **argv)
     ros::Subscriber desired_force3_log = nh.subscribe("force_d",1,desired_force_callback,ros::TransportHints().tcpNoDelay());
     ros::Subscriber desired_torque3_log = nh.subscribe("torque_d",1,desired_torque_callback,ros::TransportHints().tcpNoDelay());
     ros::Subscriber sbus_data_plot = nh.subscribe("Sbus_data_plot",1,sbus_data_callback,ros::TransportHints().tcpNoDelay());
-
+    ros::Subscriber battery_voltage_main_log = nh.subscribe("battery_voltage",1,batteryCallback,ros::TransportHints().tcpNoDelay());
 
     essential_data_log=nh.advertise<std_msgs::Float64MultiArray>("simple_logging_data",10);
     ros::Timer timerPublish_log = nh.createTimer(ros::Duration(1.0/200.0),std::bind(publisherSet));
@@ -127,7 +129,7 @@ int main(int argc, char **argv)
 void publisherSet(){
      
 
-    logging_data.data.resize(57);
+    logging_data.data.resize(58);
     logging_data.data[0]=angle.x;
     logging_data.data[1]=angle.y;
     logging_data.data[2]=angle.z;
@@ -186,10 +188,14 @@ void publisherSet(){
     logging_data.data[54]=sbus6;
     logging_data.data[55]=sbus7;
 
-
-    logging_data.data[56]=delta_time.data;
+    logging_data.data[56]=battery_voltage_main.data;
+    logging_data.data[57]=delta_time.data;
     essential_data_log.publish(logging_data);
 
+}
+void batteryCallback(const std_msgs::Float32& msg){
+	battery_voltage_main.data=msg.data;
+	
 }
 
 void angle_callback(const geometry_msgs::Vector3& msg){
@@ -292,9 +298,9 @@ void delta_time_callback(const std_msgs::Float32& msg){
 void jointstateCallback(const sensor_msgs::JointState& msg){
 
 	theta11=msg.position[0];
-	theta12=msg.position[1];
+	theta12=-msg.position[1];
 	theta21=msg.position[2];
-	theta22=msg.position[3];
+	theta22=-msg.position[3];
 	
 
 }
