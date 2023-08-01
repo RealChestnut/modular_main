@@ -3,7 +3,7 @@
  
     <include file="$(find setting_tf2)/launch/tf2_setting.launch">
     </include>
-    <!-- Dynamixel Workbench Controller -->
+<?ignore    <!-- Dynamixel Workbench Controller -->
     <include file="$(find dynamixel_workbench_controllers)/launch/position_control.launch">
         <arg name="device_name"        		default="/dev/ttyU2D2"/>
         <arg name="baud_rate"   		default="4500000"/>
@@ -12,8 +12,8 @@
 	<arg name="position_p_gain"		default="1500"/>
 	<arg name="position_i_gain"		default="300"/>
 	<arg name="position_d_gain"		default="100"/>
-    </include>
-    <!-- ros_mscl -->
+    </include> ?>
+<?ignore    <!-- ros_mscl -->
     <include file="$(find microstrain_inertial_driver)/launch/microstrain.launch">
 	  <arg name="params_file"            default = "" />
         <!-- <arg name="name"                   default = "gx5" /> -->
@@ -31,7 +31,7 @@
 	  <arg name="filter_child_frame_id"  default = "sensor" />
 	  <arg name="nmea_frame_id"          default = "nmea" />
 	  <arg name="use_enu_frame"          default = "false" />
-    </include>
+    </include> ?>
     <!-- t265 -->
     <include file="$(find realsense2_camera)/launch/rs_t265.launch">
     </include>
@@ -49,31 +49,31 @@
 	<param name="position_integ_limit"	value="10.0"/>
 
 	<!--Center of mass-->
-	<param name="x_center_of_mass"		value="-0.115"/> <!-- -0.127 -->
-	<param name="y_center_of_mass"		value="0.115"/> <!-- 0.120 -->
-	<param name="z_center_of_mass"		value="-0.040"/><!-- -0.040-->	
+	<param name="x_center_of_mass"		value="-0.005"/> <!-- -0.127 -->
+	<param name="y_center_of_mass"		value="0.20"/> <!-- 0.120 -->
+	<param name="z_center_of_mass"		value="-0.070"/><!-- -0.040-->	
 
 	<!--Conventional flight mode-->
     		<!--Conventional Mode attitude_r gains-->
-    		<param name="conv_attitude_r_P_gain"	value="7.0"/> <!-- 7 -->
-    		<param name="conv_attitude_r_I_gain"	value="2.0"/> <!-- 2.0 -->
-    		<param name="conv_attitude_r_D_gain"	value="2.0"/> <!-- 2.0 -->
+    		<param name="conv_attitude_r_P_gain"	value="20"/> <!-- 7 -->
+    		<param name="conv_attitude_r_I_gain"	value="1.0"/> <!-- 2.0 -->
+    		<param name="conv_attitude_r_D_gain"	value="4.0"/> <!-- 2.0 -->
 		
 
 		<!--Conventional Mode attitude_p gains-->
-    		<param name="conv_attitude_p_P_gain"	value="7.0"/>
-    		<param name="conv_attitude_p_I_gain"	value="2.0"/>
-    		<param name="conv_attitude_p_D_gain"	value="2.0"/>
+    		<param name="conv_attitude_p_P_gain"	value="7.5"/>
+    		<param name="conv_attitude_p_I_gain"	value="0.3"/>
+    		<param name="conv_attitude_p_D_gain"	value="1.5"/>
 
 		<!--Conventional Mode attitude_y gain-->
-		<param name="conv_attitude_y_P_gain"	value="2.0"/> <!-- 2.0 -->
+		<param name="conv_attitude_y_P_gain"	value="6.0"/> <!-- 2.0 -->
 		<!--<param name="conv_attitude_y_I_gain"	value="0"/>-->
-		<param name="conv_attitude_y_D_gain"	value="0.1"/> <!-- 0.1 -->
+		<param name="conv_attitude_y_D_gain"	value="0.5"/> <!-- 0.1 -->
 
 		<!--Conventional Mode Altitude gains-->
 		<param name="conv_altitude_P_gain"	value="12.0"/> <!-- 12 -->
 		<param name="conv_altitude_I_gain"	value="5.0"/> <!-- 5 -->
-		<param name="conv_altitude_D_gain"	value="7.0"/> <!-- 6.0 -->
+		<param name="conv_altitude_D_gain"	value="6.0"/> <!-- 7.0 -->
 
 		<!--Conventional Mode Velocity gains-->
 		<param name="conv_velocity_P_gain"	value="1.0"/> <!-- 1.2 -->	
@@ -81,26 +81,26 @@
 		<param name="conv_velocity_D_gain"	value="0.5"/> <!-- 0.7 -->
 
 		<!--Conventional Mode Horizontal Position gains-->
-		<param name="conv_position_P_gain"	value="1.5"/> <!-- 1.5 -->	
+		<param name="conv_position_P_gain"	value="1.2"/> <!-- 1.5 -->	
 		<param name="conv_position_I_gain"	value="0.1"/> <!-- 0.1 -->	
-		<param name="conv_position_D_gain"	value="1.0"/> <!-- 0.5 -->
+		<param name="conv_position_D_gain"	value="0.5"/> <!-- 0.5 -->
 	
 	<!--Tilt flight mode-->
 		<!--Tilt Mode attitude_r gains-->
-		<param name="tilt_attitude_r_P_gain"	value="7.0"/>	<!-- 7.0 -->
-		<param name="tilt_attitude_r_I_gain"	value="2.0"/>   <!-- 2.0 -->
-		<param name="tilt_attitude_r_D_gain"	value="2.2"/>  <!-- 2.0 -->
+		<param name="tilt_attitude_r_P_gain"	value="35"/>	<!-- 20.0 -->
+		<param name="tilt_attitude_r_I_gain"	value="1.1"/>   <!-- 1.1 -->
+		<param name="tilt_attitude_r_D_gain"	value="4.0"/>  <!-- 4.0 -->
 
 		<!--Tilt Mode attitude_p gains-->
-                <param name="tilt_attitude_p_P_gain"      value="7.0"/> <!-- 7.0 -->
-                <param name="tilt_attitude_p_I_gain"      value="2.0"/> <!-- 2.0 -->
-                <param name="tilt_attitude_p_D_gain"      value="2.2"/> <!-- 2.0 -->
+                <param name="tilt_attitude_p_P_gain"      value="8.5"/> <!-- 8.5 -->
+                <param name="tilt_attitude_p_I_gain"      value="0.4"/> <!-- 0.4 -->
+                <param name="tilt_attitude_p_D_gain"      value="2.0"/> <!-- 2.0 -->
 
 
 		<!--Tilt Mode attitude_y gains-->
-		<param name="tilt_attitude_y_P_gain"	value="2.0"/> <!-- 3.0 -->
+		<param name="tilt_attitude_y_P_gain"	value="12.0"/> <!-- 9.0 -->
 		<!--<param name="tilt_attitude_y_I_gain"	value="0"/>-->
-		<param name="tilt_attitude_y_D_gain"	value="0.2"/> <!-- 0.3 -->
+		<param name="tilt_attitude_y_D_gain"	value="0.5"/> <!-- 0.5-->
 
 		<!--Tilt Mode Altitude gains-->
 		<param name="tilt_altitude_P_gain"	value="12.0"/>
@@ -108,14 +108,14 @@
 		<param name="tilt_altitude_D_gain"	value="6.0"/>
 
 		<!--Tilt Mode Velocity gains-->
-		<param name="tilt_velocity_P_gain"	value="1.0"/> <!-- 1.0 -->	
+		<param name="tilt_velocity_P_gain"	value="0.5"/> <!-- 1.0 -->	
 		<param name="tilt_velocity_I_gain"	value="0.1"/> <!-- 1.0 -->	
-		<param name="tilt_velocity_D_gain"	value="0.5"/> <!-- 0.2 -->
+		<param name="tilt_velocity_D_gain"	value="0.1"/> <!-- 0.2 -->
 
 		<!--Tilt Mode Position gains-->
-		<param name="tilt_position_P_gain"	value="0.4"/> <!-- 2.0 -->	
+		<param name="tilt_position_P_gain"	value="2.3"/> <!-- 2.0 -->	
 		<param name="tilt_position_I_gain"	value="0.1"/> <!-- 0.3 -->	
-		<param name="tilt_position_D_gain"	value="0.1"/> <!-- 0.5 -->	
+		<param name="tilt_position_D_gain"	value="0.5"/> <!-- 0.5 -->	
 
 	
 

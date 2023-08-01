@@ -371,9 +371,9 @@ void rpyT_ctrl();
 void ud_to_PWMs(double tau_r_des, double tau_p_des, double tau_y_des, double Thrust_des);
 float Force_to_PWM(float F);
 void jointstateCallback(const sensor_msgs::JointState& msg);
-//void jointstate_sub_Callback(const sensor_msgs::JointState& msg);
+void jointstate_sub_Callback(const sensor_msgs::JointState& msg);
 void imu_Callback(const sensor_msgs::Imu& msg);
-sensor_msgs::JointState servo_msg_create(float rr1, float rp1,float rr2, float rp2);
+sensor_msgs::JointState servo_msg_create(float rr1, float rp1/*,float rr2, float rp2*/);
 void sbusCallback(const std_msgs::Int16MultiArray::ConstPtr& array);
 void batteryCallback(const std_msgs::Int16& msg);
 void posCallback(const geometry_msgs::Vector3& msg);
@@ -678,7 +678,7 @@ int main(int argc, char **argv){
 	//
 
     ros::Subscriber dynamixel_state = nh.subscribe("joint_states",10,jointstateCallback,ros::TransportHints().tcpNoDelay());
-//    ros::Subscriber Servo_angle_sub = nh. subscribe("servo_angle_sub",10,jointstate_sub_Callback,ros::TransportHints().tcpNoDelay()); 
+    ros::Subscriber Servo_angle_sub = nh. subscribe("servo_angle_sub",10,jointstate_sub_Callback,ros::TransportHints().tcpNoDelay()); 
     ros::Subscriber att = nh.subscribe("/imu/data",1,imu_Callback,ros::TransportHints().tcpNoDelay());
     ros::Subscriber rc_in = nh.subscribe("/sbus",10,sbusCallback,ros::TransportHints().tcpNoDelay());
 	ros::Subscriber battery_checker = nh.subscribe("/battery",10,batteryCallback,ros::TransportHints().tcpNoDelay());
@@ -778,13 +778,13 @@ void publisherSet(){
         Force_comb.data[6] = F23;
         Force_comb.data[7] = F24;
 
-	//Force_cmd.data.resize(4);
-
-        /*Force_cmd.data[0] = F21;
+	Force_cmd.data.resize(4);
+/*
+        Force_cmd.data[0] = F21;
         Force_cmd.data[1] = F22;
         Force_cmd.data[2] = F23;
-        Force_cmd.data[3] = F24;*/
-
+        Force_cmd.data[3] = F24;
+*/
         Servo_sub_cmd.data.resize(2);
 /*        Servo_sub_cmd.data[0] = theta21_command;
         Servo_sub_cmd.data[1] = theta22_command; */
@@ -814,7 +814,7 @@ void publisherSet(){
 	CoM.z = z_c_hat;
 	PWMs.publish(PWMs_cmd);// PWMs_d value
         //22.10.27 master to slave data
-        //master2slave_force_pub.publish(Force_cmd);
+        master2slave_force_pub.publish(Force_cmd);
         master2slave_servo_pub.publish(Servo_sub_cmd);
 	//22.11.01
         //kill_switch_sub.publish(kill_sub);
@@ -823,7 +823,7 @@ void publisherSet(){
         euler.publish(imu_rpy);//rpy_act value
         desired_angle.publish(angle_d);//rpy_d value
         Forces.publish(Force_comb);// force conclusion
-        goal_dynamixel_position_.publish(servo_msg_create(theta11_command,-theta12_command,theta21_command,-theta22_command)); // desired theta
+        goal_dynamixel_position_.publish(servo_msg_create(theta11_command,-theta12_command)); // desired theta
         desired_torque.publish(torque_d); // torque desired
         linear_velocity.publish(lin_vel); // actual linear velocity
         PWM_generator.publish(PWMs_val);
@@ -1160,14 +1160,14 @@ void jointstateCallback(const sensor_msgs::JointState& msg){
 
    	//ROS_INFO("theta11:%lf,   theta12:%lf,theta21:%lf, theta22:%lf",theta11, theta12,theta21,theta22);
 }
-/*
+
 
 void jointstate_sub_Callback(const sensor_msgs::JointState& msg){
         rac_servo_value=msg;
         theta21=msg.position[0];
         theta22=msg.position[1];
         //ROS_INFO("theta21:%lf   theta22:%lf",theta21, theta22);
-}*/
+}
 ros::Time imuTimer;
 
 void imu_Callback(const sensor_msgs::Imu& msg){
@@ -1184,10 +1184,10 @@ void imu_Callback(const sensor_msgs::Imu& msg){
 
     	// TP attitude - Euler representation
     	
-	/*
+	
 	tf::Matrix3x3(quat).getRPY(imu_rpy.x,imu_rpy.y,imu_rpy.z);
 	
-	
+	/*
 	base_yaw = cam_att(2);
     	if(base_yaw - yaw_prev < -pi) yaw_rotate_count++;
 	else if(base_yaw - yaw_prev > pi) yaw_rotate_count--;
@@ -1198,33 +1198,33 @@ void imu_Callback(const sensor_msgs::Imu& msg){
 	yaw_prev = base_yaw;
 	*/
 	// ROS_INFO("imuCallback time : %f",(((double)ros::Time::now().sec-(double)imuTimer.sec)+((double)ros::Time::now().nsec-(double)imuTimer.nsec)/1000000000.));
-	//imuTimer = ros::Time::now();
+	imuTimer = ros::Time::now();
 }
 
 void filterCallback(const sensor_msgs::Imu& msg){
 	filtered_angular_rate=msg.angular_velocity;
 }
 
-sensor_msgs::JointState servo_msg_create(float rr1, float rp1, float rr2,float rp2){
+sensor_msgs::JointState servo_msg_create(float rr1, float rp1/*, float rr2,float rp2*/){
 	sensor_msgs::JointState servo_msg;
 
 	servo_msg.header.stamp=ros::Time::now();
 
-	servo_msg.name.resize(4);
+	servo_msg.name.resize(2);
 	servo_msg.name[0]="id_11";
 	servo_msg.name[1]="id_12";
 
-	//
+	/*
 	servo_msg.name[2]="id_21";
         servo_msg.name[3]="id_22";		
-	//
+	*/
 
-	servo_msg.position.resize(4);
+	servo_msg.position.resize(2);
 	servo_msg.position[0]=rr1;
 	servo_msg.position[1]=rp1;
-	//
+	/*
 	servo_msg.position[2]=rr2;
-        servo_msg.position[3]=rp2;
+        servo_msg.position[3]=rp2;*/
 	//ROS_INFO("rr: %lf, rp: %lf",rr,rp);
 	return servo_msg;
 }
@@ -1233,15 +1233,7 @@ void sbusCallback(const std_msgs::Int16MultiArray::ConstPtr& array){
 	for(int i=0;i<8;i++){
 		Sbus[i]=map<int16_t>(array->data[i], 352, 1696, 1000, 2000);
 	}
-	/*
 	
-	int i = 0;
-	while(i<8)
-	{
-		Sbus[i]=map<int16_t>(array->data[i], 352, 1696, 1000, 2000);
-		i++;
-	}
-	*/
 	if(Sbus[4]<1500) kill_mode=true;
 	else kill_mode=false;
 	kill_sub.data=kill_mode;
