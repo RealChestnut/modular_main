@@ -191,8 +191,11 @@ double Fe_cutoff_freq = 1.0;
 static double r_arm = 0.3025;// m // diagonal length between thruster x2
 static double l_servo = 0.035;
 static double mass = 5.6;//2.9;//3.8; 2.365;//(Kg)
+static double mass_sub1 = 0;
+static double mass_sub2 = 0;
+
 static double r2=sqrt(2);
-static double d_module = 0.50; //(m) distance between main and sub
+static double l_module = 0.50; //(m) module horizontal body length
 
 //Propeller constants(DJI E800(3510 motors + 620S ESCs))
 static double xi = 0.01;//F_i=k*(omega_i)^2, M_i=b*(omega_i)^2
@@ -220,13 +223,14 @@ double x_c_hat=0.0;
 double y_c_hat=0.0;
 double z_c_hat=0.0;
 
-// Original Inertia Tensor elements
+//  Inertia Tensor elements
 
-//diagonal
+
+//Original inertia tensor diagonal
 double J_xx = 0.01;
 double J_yy = 0.01;
 double J_zz = 0.1;
-//off-diagonal
+//Original inertia tensor off-diagonal
 double J_xy = 0;
 double J_xz = 0;
 
@@ -236,7 +240,7 @@ double J_yz = 0;
 double J_zx = 0;
 double J_zy = 0;
 
-
+//
 
 
 //--------------------------------------------------------
@@ -422,12 +426,25 @@ Eigen::Matrix3d Rotx;
 
 //Hat_Moment_of_Inertia_Tensor_Group ----------------------23_08_01
 Eigen::Matrix3d hat_MoI; //final value of combined MoI Calculation
-Eigen::Matrix3d Origin_MoI; // original MoI Tensor
+Eigen::Matrix3d origin_MoI; // original MoI Tensor
 Eigen::Matrix3d hat_CoM_x; // CoM Cross product matrix 
+Eigen::Matrix3d accent_MoI;
 
-geometry_msgs::Vector3 CoM; // hat CoM Vector for debugging
+geometry_msgs::Vector3 CoM; // hat CoM Vector for debugging :: system
+double x_c_main = 0;
+double y_c_main = 0;
+double z_c_main = 0;
 
+double x_c_sub1 = 0;
+double y_c_sub1 = 0;
+double z_c_sub1 = 0;
 
+double x_c_sub2 = 0;
+double y_c_sub2 = 0;
+double z_c_sub2 = 0;
+
+int module_num_count=0; // number of modules
+int toggle =0; // origin_MoI toggle flag
 // 
 
 //Timer------------------------------------------------
@@ -435,54 +452,12 @@ auto end  =std::chrono::high_resolution_clock::now();
 auto start=std::chrono::high_resolution_clock::now();
 //-----------------------------------------------------
 
-//Extremum Seeking Control -----------------------------
 geometry_msgs::Vector3 prev_angular_Vel;
 geometry_msgs::Vector3 angular_Accel;
 geometry_msgs::Vector3 sine_wave;
 
-double MoI_x_hat = 0.01;
-double MoI_y_hat = 0.01;
-double G_XY = 0.2;
-double G_Z = 0.5;
+//-----------------------------------------------------
 
-double bias_x_c = 0;
-double bias_y_c = 0;
-double bias_z_c = 0;
-double x_c_limit = 0.04;
-double y_c_limit = 0.04;
-double z_c_limit = 0.1;
-
-//Bandpass filter parameter
-double Q_factor=10;
-double pass_freq1=5.0;
-double pass_freq2=5.0;
-
-//Filter1
-double x_11=0;
-double x_12=0;
-double x_dot_11=0;
-double x_dot_12=0;
-double y_11=0;
-
-//Filter2
-double x_21=0;
-double x_22=0;
-double x_dot_21=0;
-double x_dot_22=0;
-double y_21=0;
-
-//Filter3
-double x_31=0;
-double x_32=0;
-double x_dot_31=0;
-double x_dot_32=0;
-double y_31=0;
-
-double vibration1=0;
-double vibration2=0;
-double time_count=0;
-double Amp_XY=0.5;
-double Amp_Z=1.0;
 //-----------------------------------------------------
 //Accelerometer LPF------------------------------------
 double x_ax_dot = 0;
@@ -526,36 +501,139 @@ void case_selector(int num){
 
 void shape_selector(int num){
 	// combination rule 
-	// 1_main drone must be located on the far left
-	// 2_main drone must be located at the bottom
+	// 1_ main drone must be located on the far left
+	// 2_ main drone must be located at the bottom
+	// 3_ sub1 drone must be battery exchanger	
 	
-	
+	// setMoI value changed in here	
 	if(num==1){
-		x_c_hat=x_c_hat;
-		y_c_hat=y_c_hat;
-		z_c_hat=z_c_hat;
+		x_c_main=x_c_hat;
+		y_c_main=y_c_hat;
+		z_c_main=z_c_hat;
+
+		x_c_sub1=0;
+                y_c_sub1=0;
+                z_c_sub1=0;
+
+		x_c_sub2=0;
+                y_c_sub2=0;
+                z_c_sub2=0;
+
+		mass_sub1=0;
+                mass_sub2=0;
+
 	}
 	else if(num==2){
-		x_c_hat=x_c_hat;
-                y_c_hat=y_c_hat;
-                z_c_hat=z_c_hat;
 	
+		x_c_main=x_c_hat;
+                y_c_main=y_c_hat;
+                z_c_main=z_c_hat;
+
+		x_c_sub1=0;
+                y_c_sub1=0;
+                z_c_sub1=0;
+
+		x_c_sub2=x_c_hat;
+                y_c_sub2=y_c_hat-l_module;
+                z_c_sub2=z_c_hat;
+
+		mass_sub1=0;
+                mass_sub2=5.6;
+
 	}
 	else if(num==3){
 	
+		x_c_main=x_c_hat;
+                y_c_main=y_c_hat;
+                z_c_main=z_c_hat;
+
+		x_c_sub1=x_c_hat-l_module;
+                y_c_sub1=y_c_hat;
+                z_c_sub1=z_c_hat;
+
+		x_c_sub2=0;
+                y_c_sub2=0;
+                z_c_sub2=0;
+
+		mass_sub1=5.6;
+                mass_sub2=0;
+
+
 	}
 	else if(num==4){
         
+		x_c_main=x_c_hat;
+                y_c_main=y_c_hat;
+                z_c_main=z_c_hat;
+
+		x_c_sub1=x_c_hat;
+                y_c_sub1=y_c_hat-l_module;
+                z_c_sub1=z_c_hat;
+
+                x_c_sub2=x_c_hat;
+                y_c_sub2=y_c_hat-2*l_module;
+                z_c_sub2=z_c_hat;
+
+		mass_sub1=5.6;
+                mass_sub2=5.6;
+
 	}
 	else if(num==5){
         
+		x_c_main=x_c_hat;
+                y_c_main=y_c_hat;
+                z_c_main=z_c_hat;
+
+		x_c_sub1=x_c_hat-l_module;
+                y_c_sub1=y_c_hat;
+                z_c_sub1=z_c_hat;
+
+                x_c_sub2=x_c_hat-2*l_module;
+                y_c_sub2=y_c_hat;
+                z_c_sub2=z_c_hat;
+
+		mass_sub1=5.6;
+                mass_sub2=5.6;
 	}
 	else if(num==6){
 	
+		x_c_main=x_c_hat;
+                y_c_main=y_c_hat;
+                z_c_main=z_c_hat;
+
+		x_c_sub1=x_c_hat-l_module;
+                y_c_sub1=y_c_hat-l_module;
+                z_c_sub1=z_c_hat;
+
+                x_c_sub2=x_c_hat;
+                y_c_sub2=y_c_hat-l_module;
+                z_c_sub2=z_c_hat;
+
+		mass_sub1=5.6;
+                mass_sub2=5.6;
 	}
 	else if(num==7){
+		x_c_main=x_c_hat;
+                y_c_main=y_c_hat;
+                z_c_main=z_c_hat;
 
-        }
+		x_c_sub1=x_c_hat;
+                y_c_sub1=y_c_hat-l_module;
+                z_c_sub1=z_c_hat;
+
+                x_c_sub2=x_c_hat-l_module;
+                y_c_sub2=y_c_hat;
+                z_c_sub2=z_c_hat;
+
+		mass_sub1=5.6;
+                mass_sub2=5.6;
+	}
+	//J_hat=sigma(J_accent_i) 
+	
+	hat_MoI = 
+		setMoI(mass,x_c_main,y_c_main,z_c_main)+
+		setMoI(mass_sub1,x_c_sub1,y_c_sub1,z_c_sub1)+
+		setMoI(mass_sub2,x_c_sub2,y_c_sub2,z_c_sub2);
 
 	// if case167, enter the case selector
 	// if case2,3,4,5 must  pass by the case selection 

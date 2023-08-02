@@ -23,7 +23,7 @@ void filterCallback(const sensor_msgs::Imu& msg);
 void t265OdomCallback(const nav_msgs::Odometry::ConstPtr& msg);
 void setCM();
 void setSA();
-void setMoI();//23_08_01
+void setMoI(int toggle ,double mass, double xc double yc double zc);//23_08_01
 void publisherSet();
 int32_t pwmMapping(double pwm);
 void pwm_Command(double pwm1, double pwm2, double pwm3, double pwm4);
@@ -136,7 +136,6 @@ int main(int argc, char **argv){
 	
 	//Initialization parameter matrix & vector for Control -----
 		setCM(); //Control matrix
-                setMoI(); //inertia Tensor matrix
 		F_cmd << 0, 0, 0, 0; //force command
 		
 
@@ -208,7 +207,7 @@ void publisherSet(){
 	//------------------------------
 	
 	// Inertia Tensor update 23.08.01
-	setMoI();
+	setMoI(0.0, 0.0, 0.0, 0.0);
 	//------------------------------
 	
 	//angular_accerlation update-----------------------------------------
@@ -306,19 +305,19 @@ void publisherSet(){
 }
 
 
-void setMoI(){
+void setMoI(double mass, double xc, double yc, double zc){
 	
-	Origin_MoI << J_xx, -J_xy, -J_xz,
+	origin_MoI << J_xx, -J_xy, -J_xz,
 		      -J_yx, J_yy, -J_yz,
 		      -J_zx, -J_zy, J_zz;
 
 	hat_CoM_x << 
-		0, -z_c_hat, y_c_hat,
-		z_c_hat, 0, -x_c_hat
-		-y_c_hat, x_c_hat, 0;
+		0, -zc, yc,
+		zc, 0, -xc,
+	       -yc, xc, 0;
 
 	
-	hat_MoI = Origin_MoI  + mass*hat_CoM_x*hat_CoM_x;
+	accent_MoI = origin_MoI  + mass*hat_CoM_x*hat_CoM_x;
 }
 
 
